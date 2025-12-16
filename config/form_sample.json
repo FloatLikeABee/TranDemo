@@ -1,0 +1,252 @@
+{
+    "InIPBoundary": true,
+    "RequireIPAddress": false,
+    "CreatedByUser": null,
+    "CreatedByUserName": "",
+    "ID": 3008,
+    "DataTypeId": 9,
+    "Name": "Student Sample Form",
+    "Description": "This is a sample for student form",
+    "Guid": "_48B97FDF74C24E40BE5DE15FF83A3F03",
+    "GridOptions": "{\"IsLocationRequired\":false,\"BackgroundColor\":\"#4A4A4A\",\"IsMyRecordsFilterRequired\":false,\"SpecifyRecordOptions\":{\"TypeId\":1,\"FilterId\":null,\"SpecificRecordIds\":[]}}",
+    "SystemDefined": false,
+    "LastUpdated": "2025-12-15T03:42:47.367",
+    "AttributeFlag": 0,
+    "ExternalID": null,
+    "IPAddressBoundary": null,
+    "CreatedOn": "2025-12-15T03:41:36.613",
+    "Public": false,
+    "ExpiredOn": "01/01/2026 4:59 AM",
+    "HasExpiredOn": true,
+    "GeofenceBoundaries": null,
+    "DisplayOneSection": false,
+    "ActiveOn": "12/01/2025 5:00 AM",
+    "HasActiveOn": true,
+    "ThankYouMessage": "<p style=\"text-align:center;\">Thank you! Your response was submitted.</p><p style=\"text-align:center;\">This is a sample.</p>",
+    "AllowMultipleResponses": false,
+    "CreatedBy": 26,
+    "OneResponsePerRecipient": false,
+    "NotShowInFormfinder": false,
+    "AllowViewForm": false,
+    "AllowViewAllSubmittedForms": false,
+    "AllowSubmitNewForm": false,
+    "AllowRFIDScanning": false,
+    "SubmitFormOnRFIDScan": false,
+    "ShowCustomThankYouMessage": true,
+    "DisplayMessageLength": null,
+    "FormLibraryId": null,
+    "DataType": null,
+    "RoleForms": [
+        {
+            "FormID": 3008,
+            "RoleID": 243
+        }
+    ],
+    "UDGridDataSources": [
+        {
+            "ID": 3139,
+            "DBID": 7,
+            "UDGridID": 3008,
+            "DBINFO": null,
+            "UDGrid": null
+        }
+    ],
+    "UDGridFields": [
+    ],
+    "UDGridRecords": [
+    ],
+    "UDGridRules": [
+        {
+            "ID": 2002,
+            "RuleType": "form",
+            "Guid": "_B78FEABEB837AFF8CF25C0E425347A04",
+            "Name": "Sample Form Rule",
+            "Enabled": true,
+            "ConditionLogicOperator": "and",
+            "ConditionOptions": [
+                {
+                    "Guid": "_66B78E5E6F55984431A375659FE280CF",
+                    "QuestionGuid": "_0A99864721F792BCB5EE63D38640829B",
+                    "Operator": "eq",
+                    "Value": "true"
+                }
+            ],
+            "ActionOptions": [
+                {
+                    "Guid": "_4E76EEBD05C8F97116937A3E2ECF4AE4",
+                    "Action": "sendemail",
+                    "Value": "Sample Form",
+                    "AssociateRecordFrom": null,
+                    "UDGridRecordID": 0,
+                    "ExistUDGridRuleActionCreateRecords": false,
+                    "UDGridRuleActionCreateRecords": null,
+                    "IsGeocodedByPin": false
+                }
+            ],
+            "UDGridRuleActionEmails": [
+                {
+                    "UDGridRecordID": 0,
+                    "ID": 1002,
+                    "Guid": "_4E76EEBD05C8F97116937A3E2ECF4AE4",
+                    "UDGridID": 3008,
+                    "RuleID": 2002,
+                    "EmailAddress": "noreply@transfinder.com",
+                    "To": "ge.gao@transfinder.com",
+                    "Cc": "",
+                    "Bcc": "",
+                    "Subject": "Sample Form",
+                    "Message": "This is content",
+                    "IncludeFormAsPDF": true,
+                    "UDFTo": "",
+                    "UDFCc": "",
+                    "UDFBcc": "",
+                    "QuestionTo": "",
+                    "QuestionCc": "",
+                    "QuestionBcc": ""
+                }
+            ],
+            "UDGridId": 3008
+        }
+    ],
+    "UDGridSections": [
+        {
+            "Name": "Default Section",
+            "Sequence": 1,
+            "RoleSections": [
+            ],
+            "Id": 1003,
+            "UDGridId": 3008,
+            "IsPublic": false,
+            "UDGridFields": [
+                {
+                    "ID": 3031,
+                    "DataTypeId": 9,
+                    "Description": null,
+                    "DisplayName": "Attachment Question",
+                    "FieldOptions": "{\"DisplayName\":\"Attachment Question\",\"Description\":null,\"DataTypeId\":9,\"TypeId\":14,\"MaximumUploadFileCount\":1,\"TypeName\":\"Attachment\"}",
+                    "Index": 1,
+                    "Name": "Attachment Question",
+                    "Required": false,
+                    "Type": 14,
+                    "TypeName": "Attachment",
+                    "UDGridSectionId": 1003,
+                    "UDGridId": 3008,
+                    "Guid": "_3EBB1CCC85DFA0C9775EE21EDDF44701",
+                    "CreatedOn": "2025-12-15T03:41:36.853",
+                    "LastUpdatedOn": "2025-12-15T03:42:47.323"
+                },
+                {
+                    "ID": 3032,
+                    "DataTypeId": 9,
+                    "Description": null,
+                    "DisplayName": "Boolean Question",
+                    "FieldOptions": "{\"DisplayName\":\"Boolean Question\",\"Description\":null,\"DataTypeId\":9,\"TypeId\":1,\"TrueDisplayName\":\"Yes\",\"FalseDisplayName\":\"No\",\"TypeName\":\"Boolean\"}",
+                    "Index": 2,
+                    "Name": "Boolean Question",
+                    "Required": true,
+                    "Type": 1,
+                    "TypeName": "Boolean",
+                    "UDGridSectionId": 1003,
+                    "UDGridId": 3008,
+                    "Guid": "_0A99864721F792BCB5EE63D38640829B",
+                    "CreatedOn": "2025-12-15T03:41:36.853",
+                    "LastUpdatedOn": "2025-12-15T03:42:47.323"
+                },
+                {
+                    "ID": 3033,
+                    "DataTypeId": 9,
+                    "Description": null,
+                    "DisplayName": "Currency Question",
+                    "FieldOptions": "{\"DisplayName\":\"Currency Question\",\"Description\":null,\"DataTypeId\":9,\"TypeId\":12,\"MaxLength\":2,\"TypeName\":\"Currency\"}",
+                    "Index": 3,
+                    "Name": "Currency Question",
+                    "Required": false,
+                    "Type": 12,
+                    "TypeName": "Currency",
+                    "UDGridSectionId": 1003,
+                    "UDGridId": 3008,
+                    "Guid": "_CCDF40A1EC63687B38F421E5C4A1A799",
+                    "CreatedOn": "2025-12-15T03:41:36.853",
+                    "LastUpdatedOn": "2025-12-15T03:42:47.323"
+                },
+                {
+                    "ID": 3034,
+                    "DataTypeId": 9,
+                    "Description": null,
+                    "DisplayName": "DateTime Question",
+                    "FieldOptions": "{\"DisplayName\":\"DateTime Question\",\"Description\":null,\"DataTypeId\":9,\"TypeId\":3,\"TypeName\":\"Date/Time\"}",
+                    "Index": 4,
+                    "Name": "DateTime Question",
+                    "Required": false,
+                    "Type": 3,
+                    "TypeName": "Date/Time",
+                    "UDGridSectionId": 1003,
+                    "UDGridId": 3008,
+                    "Guid": "_40FB536B5B78086951F713710E13F1B8",
+                    "CreatedOn": "2025-12-15T03:41:36.853",
+                    "LastUpdatedOn": "2025-12-15T03:42:47.323"
+                },
+                {
+                    "ID": 3035,
+                    "DataTypeId": 9,
+                    "Description": null,
+                    "DisplayName": "Email question",
+                    "FieldOptions": "{\"DisplayName\":\"Email question\",\"Description\":null,\"DataTypeId\":9,\"TypeId\":22,\"TypeName\":\"Email\"}",
+                    "Index": 5,
+                    "Name": "Email question",
+                    "Required": true,
+                    "Type": 22,
+                    "TypeName": "Email",
+                    "UDGridSectionId": 1003,
+                    "UDGridId": 3008,
+                    "Guid": "_2D2D5767099A63F09C0D4890BE3CF922",
+                    "CreatedOn": "2025-12-15T03:41:36.853",
+                    "LastUpdatedOn": "2025-12-15T03:42:47.323"
+                },
+                {
+                    "ID": 3036,
+                    "DataTypeId": 9,
+                    "Description": null,
+                    "DisplayName": "Phone Number Question",
+                    "FieldOptions": "{\"DisplayName\":\"Phone Number Question\",\"Description\":null,\"DataTypeId\":9,\"TypeId\":6,\"TypeName\":\"Phone Number\"}",
+                    "Index": 6,
+                    "Name": "Phone Number Question",
+                    "Required": false,
+                    "Type": 6,
+                    "TypeName": "Phone Number",
+                    "UDGridSectionId": 1003,
+                    "UDGridId": 3008,
+                    "Guid": "_58776F3E2C0E34E630F53177293144A7",
+                    "CreatedOn": "2025-12-15T03:41:36.853",
+                    "LastUpdatedOn": "2025-12-15T03:42:47.323"
+                },
+                {
+                    "ID": 3037,
+                    "DataTypeId": 9,
+                    "Description": null,
+                    "DisplayName": "Text Question",
+                    "FieldOptions": "{\"DisplayName\":\"Text Question\",\"Description\":null,\"DataTypeId\":9,\"TypeId\":7,\"MaxLength\":255,\"TypeName\":\"Text\"}",
+                    "Index": 7,
+                    "Name": "Text Question",
+                    "Required": false,
+                    "Type": 7,
+                    "TypeName": "Text",
+                    "UDGridSectionId": 1003,
+                    "UDGridId": 3008,
+                    "Guid": "_203C604A84A9F4069418C677EB1C63CC",
+                    "CreatedOn": "2025-12-15T03:41:36.853",
+                    "LastUpdatedOn": "2025-12-15T03:42:47.323"
+                }
+            ],
+            "Guid": "_6B7F32BB5976B6BDDCF3E52E50D2510E",
+            "CreatedBy": 26,
+            "CreatedOn": "2025-12-15T03:41:36.783",
+            "LastUpdatedBy": 26,
+            "LastUpdatedOn": "2025-12-15T03:42:47.297"
+        }
+    ],
+    "UDGridSurveys": [
+    ],
+    "DisplayName": "Student Sample Form"
+}
+

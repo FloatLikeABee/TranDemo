@@ -1,0 +1,108 @@
+# OS / editor junk
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+.vscode/
+.idea/
+
+# Go build artifacts
+bin/
+dist/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Go module cache (should not be committed)
+pkg/
+
+# Coverage / test output
+coverage.*
+*.coverprofile
+
+# Logs
+*.log
+logs/
+
+# Local data / runtime directories
+data/
+results/
+sites/
+products/
+
+# SQL result and generated HTML files (if they end up outside the above folders)
+result_*.json
+result_*.csv
+*.html
+
+# Environment / secrets
+.env
+.env.*
+*.key
+*.pem
+
+# Node / frontend
+node_modules/
+frontend/node_modules/
+frontend/build/
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+
+# Swagger generated files (if re-generated locally)
+docs/swagger.yaml
+docs/swagger.json
+
+# IDE debug / launch configs (optional, keep if you want them in git)
+.fleet/
+.run/
+
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+go.work
+vendor/
+
+# BadgerDB
+data/
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Frontend
+frontend/node_modules/
+frontend/build/
+frontend/.env
+frontend/.env.local
+frontend/.env.production.local
+frontend/.env.development.local
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+
+# SQL Files (optional - remove if you want to track them)
+# sql_files/*.sql
+

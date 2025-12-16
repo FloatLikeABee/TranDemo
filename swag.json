@@ -1,0 +1,13 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "description": "Transfinder Form/Report Assistant API - Generate SQL queries using AI and execute them against SQL Server",
+    "title": "Transfinder Form/Report Assistant API",
+    "version": "1.0"
+  },
+  "host": "localhost:8080",
+  "basePath": "/",
+  "schemes": ["http", "https"],
+  "paths": {}
+}
+
