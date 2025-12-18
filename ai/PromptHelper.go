@@ -72,10 +72,6 @@ func BuildHTMLPagePrompt(resultFile *models.ResultFile, title string) string {
 	promptBuilder.WriteString(fmt.Sprintf("Columns: %v\n", resultFile.Columns))
 	promptBuilder.WriteString(fmt.Sprintf("Total Rows: %d\n\n", resultFile.RowCount))
 
-	if resultFile.Query != "" {
-		promptBuilder.WriteString(fmt.Sprintf("SQL Query: %s\n\n", resultFile.Query))
-	}
-
 	promptBuilder.WriteString("Sample Data (first 5 rows):\n")
 	maxRows := 5
 	if len(resultFile.Rows) < maxRows {
@@ -103,9 +99,8 @@ func BuildHTMLPagePrompt(resultFile *models.ResultFile, title string) string {
 	promptBuilder.WriteString("10. Add a footer with timestamp\n")
 	promptBuilder.WriteString("11. Make the table header sticky when scrolling\n")
 	promptBuilder.WriteString("12. Add alternating row colors (zebra striping) for better readability\n")
-	promptBuilder.WriteString("13. Include the SQL query if available in a code block\n")
-	promptBuilder.WriteString("14. Add proper padding and spacing throughout\n")
-	promptBuilder.WriteString("15. Use modern CSS features like flexbox/grid where appropriate\n")
+	promptBuilder.WriteString("13. Add proper padding and spacing throughout\n")
+	promptBuilder.WriteString("14. Use modern CSS features like flexbox/grid where appropriate\n")
 	promptBuilder.WriteString("\nReturn ONLY the complete HTML code, including <!DOCTYPE html>, <html>, <head>, and <body> tags. Do not include any markdown code blocks or explanations. The HTML must be self-contained and display all rows from the data provided.")
 
 	return promptBuilder.String()
@@ -116,11 +111,12 @@ func BuildFormHTMLPrompt(formJSON string, formName string, formDescription strin
 	var promptBuilder strings.Builder
 	promptBuilder.WriteString("You are a professional web developer. Generate a beautiful, modern, and professional HTML form page.\n\n")
 	
-	promptBuilder.WriteString("Theme Colors:\n")
-	promptBuilder.WriteString("- Primary/Accent: Dark Orange (use colors like #FF8C00, #FF7F00, or #E67300)\n")
-	promptBuilder.WriteString("- Background: Really Dark Grey (use colors like #1a1a1a, #1e1e1e, or #2a2a2a)\n")
-	promptBuilder.WriteString("- Text: Light colors for contrast on dark background\n")
-	promptBuilder.WriteString("- Use a professional dark theme with orange accents\n\n")
+	promptBuilder.WriteString("Theme Colors (STRICT):\n")
+	promptBuilder.WriteString("- Primary/Accent: Dark Orange ONLY (use colors like #FF8C00, #FF7F00, or #E67300). Do NOT use any other accent colors.\n")
+	promptBuilder.WriteString("- Background: Really Dark Grey ONLY (use colors like #121212, #181818, or #1e1e1e). Do NOT introduce other background colors.\n")
+	promptBuilder.WriteString("- Text: Light grey or white for contrast on dark background.\n")
+	promptBuilder.WriteString("- Inputs: Background slightly darker than main background, with borders just a bit lighter than the dark grey (e.g. border colors around #303030–#3a3a3a). No colorful borders.\n")
+	promptBuilder.WriteString("- Overall: A minimal, professional dark theme using ONLY dark grey and dark orange, no other colors.\n\n")
 	
 	promptBuilder.WriteString("Form Information:\n")
 	if formName != "" {
@@ -152,7 +148,7 @@ func BuildFormHTMLPrompt(formJSON string, formName string, formDescription strin
 	promptBuilder.WriteString("   - Attachment: <input type=\"file\">\n")
 	promptBuilder.WriteString("4. Use DisplayName for field labels\n")
 	promptBuilder.WriteString("5. Mark required fields (Required: true) with an asterisk (*) and use the 'required' attribute\n")
-	promptBuilder.WriteString("6. Create a professional, modern design with dark orange and really dark grey theme\n")
+	promptBuilder.WriteString("6. Create a professional, modern design using ONLY dark grey and dark orange (no other colors)\n")
 	promptBuilder.WriteString("7. Use proper spacing, padding, and typography\n")
 	promptBuilder.WriteString("8. Make the form responsive and mobile-friendly\n")
 	promptBuilder.WriteString("9. Add a submit button at the bottom\n")
