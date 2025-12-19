@@ -14,6 +14,7 @@ import (
 	"idongivaflyinfa/db"
 	"idongivaflyinfa/models"
 	"idongivaflyinfa/service"
+	"idongivaflyinfa/validation"
 
 	"github.com/gin-gonic/gin"
 )
@@ -130,6 +131,54 @@ func (h *Handlers) ChatHandler(c *gin.Context) {
 
 		responseText = fmt.Sprintf("Here's the form JSON based on your request:\n\n%s", formJSON)
 	} else {
+		// Check if the prompt contains report-related keywords
+		hasReportKeywords := strings.Contains(lowerPrompt, "report") ||
+			strings.Contains(lowerPrompt, "generate") ||
+			strings.Contains(lowerPrompt, "create") ||
+			strings.Contains(lowerPrompt, "i want a report") ||
+			strings.Contains(lowerPrompt, "i need to make") ||
+			strings.Contains(lowerPrompt, "i need a report") ||
+			strings.Contains(lowerPrompt, "make a report") ||
+			strings.Contains(lowerPrompt, "generate a report") ||
+			strings.Contains(lowerPrompt, "create a report")
+
+		if !hasReportKeywords {
+			// Check if the prompt makes sense (not gibberish)
+			if !validation.IsValidPrompt(req.Message) {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "The request appears to be invalid or gibberish. Please provide a meaningful message."})
+				return
+			}
+			
+			// If it's a valid prompt but not a report request, treat it as a general chat
+			chatResponse, err := h.aiService.GenerateChatResponse(req.Message)
+			if err != nil {
+				log.Printf("Error generating chat response: %v", err)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to generate response: %v", err)})
+				return
+			}
+			
+			responseText = chatResponse
+			
+			// Store chat history
+			userID := c.GetHeader("X-User-ID")
+			if userID == "" {
+				userID = "default"
+			}
+			
+			if err := h.db.StoreChatHistory(userID, req.Message, responseText); err != nil {
+				log.Printf("Error storing chat history: %v", err)
+			}
+			
+			response := models.ChatResponse{
+				Response: responseText,
+				SQL:      "",
+			}
+			
+			log.Printf("Sending chat response to client")
+			c.JSON(http.StatusOK, response)
+			return
+		}
+
 		// Generate SQL using AI
 		sql, err = h.aiService.GenerateSQL(req.Message, sqlFiles)
 		if err != nil {

@@ -297,3 +297,40 @@ func (a *AIService) GenerateFormHTMLPage(formJSON string) (string, error) {
 
 	return html, nil
 }
+
+// GenerateChatResponse generates a plain chat response for general prompts
+func (a *AIService) GenerateChatResponse(userPrompt string) (string, error) {
+	// Check cache first
+	cacheKey := fmt.Sprintf("chat_prompt:%s", userPrompt)
+	if cached, found := a.cache.Get(cacheKey); found {
+		return cached.(string), nil
+	}
+
+	ctx := context.Background()
+
+	// Build a simple chat prompt
+	prompt := fmt.Sprintf("You are a helpful assistant. Please respond to the following user message in a helpful and informative way:\n\n%s", userPrompt)
+
+	messages := []DashScopeMessage{
+		{
+			Role:    "user",
+			Content: prompt,
+		},
+	}
+
+	response, err := a.callDashScopeAPI(ctx, messages)
+	if err != nil {
+		return "", fmt.Errorf("failed to generate chat response: %w", err)
+	}
+
+	// Clean up the response - remove markdown code blocks if present
+	chatResponse := strings.TrimSpace(response)
+	chatResponse = strings.TrimPrefix(chatResponse, "```")
+	chatResponse = strings.TrimSuffix(chatResponse, "```")
+	chatResponse = strings.TrimSpace(chatResponse)
+
+	// Cache the result
+	a.cache.SetDefault(cacheKey, chatResponse)
+
+	return chatResponse, nil
+}
