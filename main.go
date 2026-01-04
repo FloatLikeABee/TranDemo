@@ -64,16 +64,37 @@ func main() {
 	// Setup Gin router
 	r := gin.Default()
 
-	// CORS configuration - Allow all origins and headers
+	// CORS configuration - Allow ALL origins, headers, and methods
 	r.Use(func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-		c.Writer.Header().Set("Access-Control-Allow-Credentials", "false")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "*")
+		origin := c.Request.Header.Get("Origin")
+		
+		// Always allow the requesting origin (allows all origins dynamically)
+		// If no origin header, use * (for non-browser requests)
+		if origin != "" {
+			c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
+			c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+		} else {
+			c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+			c.Writer.Header().Set("Access-Control-Allow-Credentials", "false")
+		}
+		
+		// Allow all headers and methods
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, Accept, Origin, Cache-Control, X-Requested-With, X-User-ID")
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD")
 		c.Writer.Header().Set("Access-Control-Expose-Headers", "*")
-		c.Writer.Header().Set("Access-Control-Max-Age", "43200")
+		c.Writer.Header().Set("Access-Control-Max-Age", "86400")
 
+		// Handle preflight OPTIONS requests
 		if c.Request.Method == "OPTIONS" {
+			if origin != "" {
+				c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
+				c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+			} else {
+				c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+				c.Writer.Header().Set("Access-Control-Allow-Credentials", "false")
+			}
+			c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, Accept, Origin, Cache-Control, X-Requested-With, X-User-ID")
+			c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD")
 			c.AbortWithStatus(204)
 			return
 		}

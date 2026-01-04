@@ -54,8 +54,21 @@ mkdir sql_files
 
 3. Run the server:
 ```bash
+# macOS/Linux (use this instead of go run to avoid LC_UUID error)
+./start.sh
+
+# Or using Make
+make run
+
+# Or build and run manually (with external linking for macOS)
+go build -ldflags="-linkmode=external" -o tran_demo main.go
+./tran_demo
+
+# Windows
 go run main.go
 ```
+
+**Note for macOS users:** Do NOT use `go run main.go` directly - it will fail with a "missing LC_UUID" error due to CGO dependencies. Always use `./start.sh` or `make run` instead.
 
 The server will start on port 8080 by default.
 
