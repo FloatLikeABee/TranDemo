@@ -3,6 +3,7 @@ package db
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -118,5 +119,193 @@ func (d *DB) LoadSQLFilesFromDir(sqlFilesDir string) ([]models.SQLFile, error) {
 	})
 
 	return sqlFiles, err
+}
+
+// StoreComplaintState stores complaint flow state
+func (d *DB) StoreComplaintState(userID string, state *models.ComplaintState) error {
+	keyStr := fmt.Sprintf("complaint:%s:%s", userID, state.ConversationID)
+	log.Printf("[DB] Storing complaint state - key: %s, conversationID: %s, step: %s, exchanges: %d", 
+		keyStr, state.ConversationID, state.Step, state.ExchangeCount)
+	
+	err := d.badgerDB.Update(func(txn *badger.Txn) error {
+		key := []byte(keyStr)
+		
+		data, err := json.Marshal(state)
+		if err != nil {
+			log.Printf("[DB] Error marshaling state: %v", err)
+			return err
+		}
+		
+		log.Printf("[DB] Setting key in transaction, data size: %d bytes", len(data))
+		if err := txn.Set(key, data); err != nil {
+			log.Printf("[DB] Error setting key in transaction: %v", err)
+			return err
+		}
+		
+		log.Printf("[DB] Successfully set key in transaction")
+		return nil
+	})
+	
+	if err != nil {
+		log.Printf("[DB] Error in Update transaction: %v", err)
+		return err
+	}
+	
+	log.Printf("[DB] Transaction committed successfully for key: %s", keyStr)
+	return nil
+}
+
+// GetComplaintState retrieves complaint flow state
+func (d *DB) GetComplaintState(userID, conversationID string) (*models.ComplaintState, error) {
+	var state *models.ComplaintState
+	
+	err := d.badgerDB.View(func(txn *badger.Txn) error {
+		key := []byte(fmt.Sprintf("complaint:%s:%s", userID, conversationID))
+		
+		item, err := txn.Get(key)
+		if err != nil {
+			return err
+		}
+		
+		return item.Value(func(val []byte) error {
+			state = &models.ComplaintState{}
+			return json.Unmarshal(val, state)
+		})
+	})
+	
+	if err != nil {
+		return nil, err
+	}
+	
+	return state, nil
+}
+
+// GetComplaintStateByUserID gets the most recent complaint state for a user
+func (d *DB) GetComplaintStateByUserID(userID string) (*models.ComplaintState, error) {
+	var state *models.ComplaintState
+	var found bool
+	
+	prefix := fmt.Sprintf("complaint:%s:", userID)
+	log.Printf("[DB] Looking for complaint state with prefix: %s", prefix)
+	
+	// First, let's see ALL complaint keys for debugging
+	d.badgerDB.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.Prefix = []byte("complaint:")
+		it := txn.NewIterator(opts)
+		defer it.Close()
+		
+		log.Printf("[DB] DEBUG: Scanning ALL complaint keys...")
+		count := 0
+		for it.Rewind(); it.Valid(); it.Next() {
+			count++
+			key := string(it.Item().Key())
+			log.Printf("[DB] DEBUG: Found complaint key #%d: %s", count, key)
+		}
+		log.Printf("[DB] DEBUG: Total complaint keys found: %d", count)
+		return nil
+	})
+	
+	err := d.badgerDB.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.Prefix = []byte(prefix)
+		// Don't use Reverse - just iterate forward and get the last ACTIVE one
+		it := txn.NewIterator(opts)
+		defer it.Close()
+		
+		log.Printf("[DB] Starting iterator with prefix: %s", prefix)
+		
+		// Iterate forward and collect all, then find the most recent ACTIVE (non-complete) one
+		var lastActiveKey []byte
+		var lastActiveItem *badger.Item
+		var lastKey []byte
+		var lastItem *badger.Item
+		count := 0
+		activeCount := 0
+		
+		for it.Rewind(); it.Valid(); it.Next() {
+			item := it.Item()
+			key := item.KeyCopy(nil)
+			keyStr := string(key)
+			
+			// Verify prefix match
+			if !strings.HasPrefix(keyStr, prefix) {
+				log.Printf("[DB] Key '%s' doesn't match prefix '%s', stopping", keyStr, prefix)
+				break
+			}
+			
+			count++
+			lastKey = key
+			lastItem = item
+			log.Printf("[DB] Iterator found key #%d: %s", count, keyStr)
+			
+			// Check if this state is active (not complete)
+			err := item.Value(func(val []byte) error {
+				var tempState models.ComplaintState
+				if err := json.Unmarshal(val, &tempState); err != nil {
+					return err
+				}
+				// If this state is not complete, it's an active session
+				if tempState.Step != "complete" && tempState.ConversationID != "" {
+					activeCount++
+					lastActiveKey = key
+					lastActiveItem = item
+					log.Printf("[DB] Found active state #%d: conversationID: %s, step: %s", 
+						activeCount, tempState.ConversationID, tempState.Step)
+				}
+				return nil
+			})
+			if err != nil {
+				log.Printf("[DB] Error reading state value: %v", err)
+			}
+		}
+		
+		log.Printf("[DB] Iterator found %d total keys, %d active keys with prefix %s", count, activeCount, prefix)
+		
+		// Prefer active state over completed state
+		if activeCount > 0 && lastActiveItem != nil {
+			found = true
+			return lastActiveItem.Value(func(val []byte) error {
+				log.Printf("[DB] Reading value for last ACTIVE key: %s, size: %d bytes", string(lastActiveKey), len(val))
+				state = &models.ComplaintState{}
+				if err := json.Unmarshal(val, state); err != nil {
+					log.Printf("[DB] Error unmarshaling complaint state: %v", err)
+					return err
+				}
+				log.Printf("[DB] Successfully retrieved ACTIVE complaint state - conversationID: %s, step: %s, exchanges: %d", 
+					state.ConversationID, state.Step, state.ExchangeCount)
+				return nil
+			})
+		}
+		
+		// If no active state found, return the last one (even if complete) for reference
+		if count > 0 && lastItem != nil {
+			found = true
+			return lastItem.Value(func(val []byte) error {
+				log.Printf("[DB] Reading value for last key (no active found): %s, size: %d bytes", string(lastKey), len(val))
+				state = &models.ComplaintState{}
+				if err := json.Unmarshal(val, state); err != nil {
+					log.Printf("[DB] Error unmarshaling complaint state: %v", err)
+					return err
+				}
+				log.Printf("[DB] Successfully retrieved complaint state - conversationID: %s, step: %s, exchanges: %d", 
+					state.ConversationID, state.Step, state.ExchangeCount)
+				return nil
+			})
+		}
+		
+		return nil // Don't return error if not found, just set found = false
+	})
+	
+	if err != nil {
+		log.Printf("[DB] Error retrieving complaint state: %v", err)
+		return nil, err
+	}
+	
+	if !found {
+		return nil, fmt.Errorf("no complaint state found")
+	}
+	
+	return state, nil
 }
 

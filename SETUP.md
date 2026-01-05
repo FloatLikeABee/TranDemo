@@ -22,14 +22,24 @@
    - The `sql_files/` directory already exists with example files
 
 3. **Run the backend server:**
+   
+   **⚠️ IMPORTANT for macOS users:** Do NOT use `go run main.go` directly - it will fail with a "missing LC_UUID" error. Use one of these methods instead:
+   
    ```bash
+   # macOS/Linux (Recommended)
+   ./start.sh
+   
+   # Or using Make (if available)
+   make run
+   
+   # Or build and run manually
+   go build -o tran_demo main.go
+   ./tran_demo
+   
    # Windows
    go run main.go
    # or
    .\start.bat
-   
-   # Linux/Mac
-   go run main.go
    ```
 
    The server will start on `http://localhost:9090`
@@ -45,8 +55,13 @@
    ```bash
    npm install
    ```
+   
+   **Note:** If you get a "react-scripts: command not found" error, make sure `package.json` has a valid `react-scripts` version (should be `5.0.1` or similar, not `^0.0.0`). Then run `npm install` again.
 
-3. **Start development server:**
+3. **Verify required files exist:**
+   The `public/index.html` file should exist. If you get a "Could not find a required file: index.html" error, make sure the `public` directory exists with `index.html` inside it.
+
+4. **Start development server:**
    ```bash
    npm start
    ```
@@ -152,6 +167,31 @@ go mod tidy
 go mod download
 ```
 
+### macOS "missing LC_UUID load command" Error
+If you encounter the `dyld: missing LC_UUID load command` error when running `go run main.go` on macOS:
+
+**This is a known issue with `go run` on macOS when using CGO dependencies (like BadgerDB).**
+
+**✅ Solution 1 (Recommended):** Use the startup script:
+```bash
+./start.sh
+```
+
+**✅ Solution 2:** Use Make (if installed):
+```bash
+make run
+```
+
+**✅ Solution 3:** Build and run manually (with external linking to fix LC_UUID):
+```bash
+go build -ldflags="-linkmode=external -w -s" -o tran_demo main.go
+./tran_demo
+```
+
+**❌ DO NOT USE:** `go run main.go` - This will always fail on macOS with this error.
+
+**Why this happens:** The `go run` command creates temporary binaries in `/tmp/go-build*` that don't have proper macOS load commands when CGO is involved. Using `go build` with external linking (`-linkmode=external`) ensures the binary includes the required `LC_UUID` load command that macOS requires.
+
 ### Port Already in Use
 Change the port:
 ```bash
@@ -163,6 +203,20 @@ PORT=8081 go run main.go
 ```
 
 ### Frontend Build Issues
+
+**"react-scripts: command not found" Error:**
+If you get this error, it usually means:
+1. Dependencies aren't installed - run `npm install` in the `frontend` directory
+2. `package.json` has an invalid `react-scripts` version - check that it's `5.0.1` or similar (not `^0.0.0`)
+
+Fix by reinstalling:
+```bash
+cd frontend
+rm -rf node_modules package-lock.json
+npm install
+```
+
+**Other build issues:**
 Clear cache and reinstall:
 ```bash
 cd frontend

@@ -50,3 +50,14 @@ type GenerateHTMLRequest struct {
 	Title    string `json:"title,omitempty"`
 }
 
+// Complaint flow models
+type ComplaintState struct {
+	ConversationID string                 `json:"conversation_id"`
+	Step           string                 `json:"step"` // "start", "dialogue", "waiting_complaint", "executing", "complete"
+	ComplaintText  string                 `json:"complaint_text,omitempty"`
+	DialogueResult map[string]interface{} `json:"dialogue_result,omitempty"`
+	InitialData    map[string]interface{} `json:"initial_data,omitempty"`
+	ExchangeCount  int                    `json:"exchange_count"` // Track number of exchanges
+	LastResponse   string                 `json:"last_response,omitempty"` // Store last AI response
+}
+
