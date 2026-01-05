@@ -11,7 +11,7 @@ const docTemplate = `{
         "contact": {},
         "version": "1.0"
     },
-    "host": "localhost:8080",
+    "host": "localhost:9090",
     "basePath": "/",
     "paths": {}
 }`
@@ -19,7 +19,7 @@ const docTemplate = `{
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
-	Host:             "localhost:8080",
+	Host:             "localhost:9090",
 	BasePath:         "/",
 	Schemes:          []string{},
 	Title:            "Transfinder Form/Report Assistant API",

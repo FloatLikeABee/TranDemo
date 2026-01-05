@@ -57,7 +57,7 @@ mkdir sql_files
 go run main.go
 ```
 
-The server will start on port 8080 by default.
+The server will start on port 9090 by default.
 
 ### Frontend Setup
 
@@ -84,7 +84,7 @@ npm run build
 ## Configuration
 
 **Application Settings:**
-- `PORT`: Server port (default: 8080)
+- `PORT`: Server port (default: 9090)
 - `GEMINI_API_KEY`: Your Gemini API key (default: already set in code)
 - `GEMINI_MODEL`: Model name (default: gemini-1.5-flash-latest)
 - `DB_PATH`: BadgerDB storage path (default: ./data/badger)
@@ -111,7 +111,7 @@ If SQL Server credentials are not provided, the service will start without SQL S
 Interactive API documentation is available via Swagger UI:
 
 ```
-http://localhost:8080/swagger/index.html
+http://localhost:9090/swagger/index.html
 ```
 
 The Swagger UI provides:
@@ -145,7 +145,7 @@ swag init
 The `/api/sql/execute` endpoint allows you to execute SQL queries against your SQL Server:
 
 ```bash
-curl -X POST http://localhost:8080/api/sql/execute \
+curl -X POST http://localhost:9090/api/sql/execute \
   -H "Content-Type: application/json" \
   -d '{"sql": "SELECT * FROM users LIMIT 10", "save": true, "format": "json"}'
 ```
@@ -179,7 +179,7 @@ Response format:
 Generate a professional HTML page from a result file:
 
 ```bash
-curl -X POST http://localhost:8080/api/results/generate-html \
+curl -X POST http://localhost:9090/api/results/generate-html \
   -H "Content-Type: application/json" \
   -d '{"filename": "result_20231214_150405_1234567890.json", "title": "User Report"}'
 ```
@@ -193,13 +193,13 @@ Response:
 }
 ```
 
-Then view it at: `http://localhost:8080/api/results/html/result_20231214_150405_1234567890.html`
+Then view it at: `http://localhost:9090/api/results/html/result_20231214_150405_1234567890.html`
 
 ### Access Swagger UI
 
 Open your browser and navigate to:
 ```
-http://localhost:8080/swagger/index.html
+http://localhost:9090/swagger/index.html
 ```
 
 You can test all endpoints directly from the Swagger UI interface.

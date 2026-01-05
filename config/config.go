@@ -30,7 +30,7 @@ type SQLServerConfig struct {
 
 func GetConfig() Config {
 	return Config{
-		Port:         getEnv("PORT", "8080"),
+		Port:         getEnv("PORT", "9090"),
 		// GeminiAPIKey: getEnv("GEMINI_API_KEY", "sk-c0587cfb940347c4b2a3c96f62360649"),
 		GeminiAPIKey: "sk-c0587cfb940347c4b2a3c96f62360649",
 		// ModelName:    getEnv("GEMINI_MODEL", "qwen3-coder"),

@@ -32,7 +32,7 @@
    go run main.go
    ```
 
-   The server will start on `http://localhost:8080`
+   The server will start on `http://localhost:9090`
 
 ## Frontend Setup
 
@@ -66,7 +66,7 @@
 
 You can set these environment variables to customize the application:
 
-- `PORT`: Server port (default: 8080)
+- `PORT`: Server port (default: 9090)
 - `GEMINI_API_KEY`: Your Gemini API key (default: already set in code)
 - `GEMINI_MODEL`: Model name (default: gemini-1.5-flash-latest)
 - `DB_PATH`: BadgerDB storage path (default: ./data/badger)
@@ -82,7 +82,7 @@ You can add SQL reference files in two ways:
 
 2. **Upload via API:**
    ```bash
-   curl -X POST http://localhost:8080/api/sql/upload \
+   curl -X POST http://localhost:9090/api/sql/upload \
      -F "file=@your_file.sql"
    ```
 
@@ -116,30 +116,30 @@ You can add SQL reference files in two ways:
    go run main.go
    ```
 
-   Access the app at: `http://localhost:8080`
+   Access the app at: `http://localhost:9090`
 
 ## Testing the API
 
 ### Health Check
 ```bash
-curl http://localhost:8080/health
+curl http://localhost:9090/health
 ```
 
 ### Chat Endpoint
 ```bash
-curl -X POST http://localhost:8080/api/chat \
+curl -X POST http://localhost:9090/api/chat \
   -H "Content-Type: application/json" \
   -d '{"message": "Create a query to get all users"}'
 ```
 
 ### List SQL Files
 ```bash
-curl http://localhost:8080/api/sql/files
+curl http://localhost:9090/api/sql/files
 ```
 
 ### Upload SQL File
 ```bash
-curl -X POST http://localhost:8080/api/sql/upload \
+curl -X POST http://localhost:9090/api/sql/upload \
   -F "file=@sql_files/example1.sql"
 ```
 

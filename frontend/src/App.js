@@ -3,7 +3,7 @@ import axios from 'axios';
 import SpeechRecognition, { useSpeechRecognition } from 'react-speech-recognition';
 import './App.css';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:9090';
 
 // Polyfill for browsers that don't support speech recognition
 if (!window.SpeechRecognition && !window.webkitSpeechRecognition) {

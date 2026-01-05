@@ -13,7 +13,7 @@ Write-Host "Installing Go dependencies..." -ForegroundColor Yellow
 go mod download
 
 # Start the server
-Write-Host "Starting Go server on port 8080..." -ForegroundColor Yellow
+Write-Host "Starting Go server on port 9090..." -ForegroundColor Yellow
 Write-Host "Frontend will be available after building React app" -ForegroundColor Yellow
 Write-Host ""
 go run main.go
