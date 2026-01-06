@@ -24,9 +24,14 @@ func NewComplaintService() *ComplaintService {
 	}
 }
 
+// InitializeResponse contains the response from the initialize step
+type InitializeResponse struct {
+	InitialData map[string]interface{} `json:"initial_data"`
+}
+
 // Step 1: Initialize the process
-func (s *ComplaintService) InitializeProcess() error {
-	url := fmt.Sprintf("%s/special-flows-1/localrunsimulationstucomplaintform/execute", ComplaintAPIBaseURL)
+func (s *ComplaintService) InitializeProcess() (*InitializeResponse, error) {
+	url := fmt.Sprintf("%s/special-flows-1/chaintest1/execute", ComplaintAPIBaseURL)
 	
 	reqBody := map[string]interface{}{
 		"initial_input": "",
@@ -35,7 +40,7 @@ func (s *ComplaintService) InitializeProcess() error {
 	
 	jsonData, err := json.Marshal(reqBody)
 	if err != nil {
-		return fmt.Errorf("failed to marshal request: %w", err)
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 	
 	log.Printf("[COMPLAINT STEP 1] Request URL: %s", url)
@@ -43,7 +48,7 @@ func (s *ComplaintService) InitializeProcess() error {
 	
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {
-		return fmt.Errorf("failed to create request: %w", err)
+		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 	
 	req.Header.Set("Accept", "application/json, text/plain, */*")
@@ -51,19 +56,39 @@ func (s *ComplaintService) InitializeProcess() error {
 	
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("failed to send request: %w", err)
+		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
 	defer resp.Body.Close()
 	
-	body, _ := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
+	
 	log.Printf("[COMPLAINT STEP 1] Response Status: %d", resp.StatusCode)
 	log.Printf("[COMPLAINT STEP 1] Response Body: %s", string(body))
 	
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("unexpected status code %d: %s", resp.StatusCode, string(body))
+		return nil, fmt.Errorf("unexpected status code %d: %s", resp.StatusCode, string(body))
 	}
 	
-	return nil
+	// Parse response to extract initial_data
+	var rawResp map[string]interface{}
+	if err := json.Unmarshal(body, &rawResp); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+	
+	result := &InitializeResponse{}
+	if initialData, ok := rawResp["initial_data"].(map[string]interface{}); ok {
+		result.InitialData = initialData
+		log.Printf("[COMPLAINT STEP 1] Extracted initial_data with %d keys", len(initialData))
+	} else {
+		// If initial_data is not in the expected format, try to use the entire response
+		log.Printf("[COMPLAINT STEP 1] WARNING: initial_data not found in expected format, using entire response")
+		result.InitialData = rawResp
+	}
+	
+	return result, nil
 }
 
 // Step 2: Start dialogue
@@ -79,11 +104,11 @@ type StartDialogueResponse struct {
 }
 
 func (s *ComplaintService) StartDialogue(initialMessage string) (*StartDialogueResponse, error) {
-	url := fmt.Sprintf("%s/dialogues/flow_localrunsimulationstucomplaintform_dialogue/start", ComplaintAPIBaseURL)
+	url := fmt.Sprintf("%s/dialogues/flow_chaintest1_dialogue/start", ComplaintAPIBaseURL)
 	
 	reqBody := StartDialogueRequest{
 		InitialMessage: initialMessage,
-		NResults:       20, // Maximum allowed by API (was 50, but API limit is 20)
+		NResults:       3, // As per new API specification
 	}
 	
 	jsonData, err := json.Marshal(reqBody)
@@ -196,7 +221,7 @@ type ContinueDialogueResponse struct {
 }
 
 func (s *ComplaintService) ContinueDialogue(conversationID, userMessage string) (*ContinueDialogueResponse, error) {
-	url := fmt.Sprintf("%s/dialogues/flow_localrunsimulationstucomplaintform_dialogue/continue", ComplaintAPIBaseURL)
+	url := fmt.Sprintf("%s/dialogues/flow_chaintest1_dialogue/continue", ComplaintAPIBaseURL)
 	
 	reqBody := ContinueDialogueRequest{
 		ConversationID: conversationID,
@@ -345,6 +370,67 @@ func (s *ComplaintService) GetDialogueInfo() ([]DialogueInfo, error) {
 }
 
 // Step 6 & 8: Execute with dialogue result
+// ExecuteWithResponseBody executes using the entire response body from continue dialogue
+func (s *ComplaintService) ExecuteWithResponseBody(responseBody map[string]interface{}) (*ExecuteResponse, error) {
+	url := fmt.Sprintf("%s/special-flows-1/chaintest1/execute", ComplaintAPIBaseURL)
+	
+	jsonData, err := json.Marshal(responseBody)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+	
+	log.Printf("[COMPLAINT EXECUTE] Request URL: %s", url)
+	log.Printf("[COMPLAINT EXECUTE] Request Body: %s", string(jsonData))
+	
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	
+	req.Header.Set("Accept", "application/json, text/plain, */*")
+	req.Header.Set("Content-Type", "application/json")
+	
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send request: %w", err)
+	}
+	defer resp.Body.Close()
+	
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
+	
+	log.Printf("[COMPLAINT EXECUTE] Response Status: %d", resp.StatusCode)
+	log.Printf("[COMPLAINT EXECUTE] Response Body: %s", string(body))
+	
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("unexpected status code %d: %s", resp.StatusCode, string(body))
+	}
+	
+	var result ExecuteResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		// Try to extract final_outcome from raw JSON
+		var rawResp map[string]interface{}
+		if err2 := json.Unmarshal(body, &rawResp); err2 != nil {
+			return nil, fmt.Errorf("failed to unmarshal response: %w", err)
+		}
+		
+		if outcome, ok := rawResp["final_outcome"]; ok {
+			result.FinalOutcome = outcome
+		}
+	}
+	
+	if result.FinalOutcome != nil {
+		log.Printf("[COMPLAINT EXECUTE] Final outcome received: %v", result.FinalOutcome)
+	} else {
+		log.Printf("[COMPLAINT EXECUTE] Final outcome is NULL")
+	}
+	
+	return &result, nil
+}
+
+// ExecuteWithDialogueResult executes with dialogue result (legacy method, kept for compatibility)
 type ExecuteRequest struct {
 	ResumeFromPhase    string                 `json:"resume_from_phase"`
 	DialoguePhase1Result map[string]interface{} `json:"dialogue_phase1_result"`
@@ -357,7 +443,7 @@ type ExecuteResponse struct {
 }
 
 func (s *ComplaintService) ExecuteWithDialogueResult(dialogueResult map[string]interface{}, initialData map[string]interface{}) (*ExecuteResponse, error) {
-	url := fmt.Sprintf("%s/special-flows-1/localrunsimulationstucomplaintform/execute", ComplaintAPIBaseURL)
+	url := fmt.Sprintf("%s/special-flows-1/chaintest1/execute", ComplaintAPIBaseURL)
 	
 	reqBody := ExecuteRequest{
 		ResumeFromPhase:    "dialogue",
