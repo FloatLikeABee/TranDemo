@@ -59,7 +59,7 @@ func main() {
 	}
 
 	// Initialize handlers
-	h := handlers.New(database, aiService, sqlService, cfg.SQLFilesDir)
+	h := handlers.New(database, aiService, sqlService, cfg.SQLFilesDir, cfg.VoiceSamplesDir)
 
 	// Setup Gin router
 	r := gin.Default()
@@ -117,6 +117,12 @@ func main() {
 	r.GET("/api/results/file/:filename", h.GetResultFileHandler)
 	r.POST("/api/results/generate-html", h.GenerateHTMLHandler)
 	r.GET("/api/results/html/:filename", h.ServeHTMLHandler)
+	
+	// Voice recognition routes
+	r.POST("/api/voice/register", h.RegisterVoiceHandler)
+	r.POST("/api/voice/recognize", h.RecognizeVoiceHandler)
+	r.GET("/api/voice/profiles", h.ListVoiceProfilesHandler)
+	r.DELETE("/api/voice/profile/:user_id", h.DeleteVoiceProfileHandler)
 
 	// Serve static files (for React app)
 	r.Static("/static", "./frontend/build/static")

@@ -309,3 +309,85 @@ func (d *DB) GetComplaintStateByUserID(userID string) (*models.ComplaintState, e
 	return state, nil
 }
 
+// StoreVoiceProfile stores a voice profile for a user
+func (d *DB) StoreVoiceProfile(profile *models.VoiceProfile) error {
+	return d.badgerDB.Update(func(txn *badger.Txn) error {
+		key := []byte(fmt.Sprintf("voice_profile:%s", profile.UserID))
+		
+		data, err := json.Marshal(profile)
+		if err != nil {
+			return err
+		}
+		
+		return txn.Set(key, data)
+	})
+}
+
+// GetVoiceProfile retrieves a voice profile by user ID
+func (d *DB) GetVoiceProfile(userID string) (*models.VoiceProfile, error) {
+	var profile *models.VoiceProfile
+	
+	err := d.badgerDB.View(func(txn *badger.Txn) error {
+		key := []byte(fmt.Sprintf("voice_profile:%s", userID))
+		
+		item, err := txn.Get(key)
+		if err != nil {
+			return err
+		}
+		
+		return item.Value(func(val []byte) error {
+			profile = &models.VoiceProfile{}
+			return json.Unmarshal(val, profile)
+		})
+	})
+	
+	if err != nil {
+		return nil, err
+	}
+	
+	return profile, nil
+}
+
+// GetAllVoiceProfiles retrieves all voice profiles
+func (d *DB) GetAllVoiceProfiles() ([]models.VoiceProfile, error) {
+	var profiles []models.VoiceProfile
+	
+	err := d.badgerDB.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.Prefix = []byte("voice_profile:")
+		it := txn.NewIterator(opts)
+		defer it.Close()
+		
+		for it.Rewind(); it.Valid(); it.Next() {
+			item := it.Item()
+			err := item.Value(func(val []byte) error {
+				var profile models.VoiceProfile
+				if err := json.Unmarshal(val, &profile); err != nil {
+					return err
+				}
+				profiles = append(profiles, profile)
+				return nil
+			})
+			if err != nil {
+				return err
+			}
+		}
+		
+		return nil
+	})
+	
+	if err != nil {
+		return nil, err
+	}
+	
+	return profiles, nil
+}
+
+// DeleteVoiceProfile deletes a voice profile
+func (d *DB) DeleteVoiceProfile(userID string) error {
+	return d.badgerDB.Update(func(txn *badger.Txn) error {
+		key := []byte(fmt.Sprintf("voice_profile:%s", userID))
+		return txn.Delete(key)
+	})
+}
+

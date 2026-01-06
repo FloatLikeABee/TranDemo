@@ -1,7 +1,9 @@
 package models
 
 type ChatRequest struct {
-	Message string `json:"message"`
+	Message    string `json:"message,omitempty"`
+	AudioData  string `json:"audio_data,omitempty"`  // Base64 encoded audio for voice input
+	AudioFormat string `json:"audio_format,omitempty"` // "wav", "mp3", "webm", etc.
 }
 
 type ChatResponse struct {
@@ -59,5 +61,34 @@ type ComplaintState struct {
 	InitialData    map[string]interface{} `json:"initial_data,omitempty"`
 	ExchangeCount  int                    `json:"exchange_count"` // Track number of exchanges
 	LastResponse   string                 `json:"last_response,omitempty"` // Store last AI response
+}
+
+// Voice recognition models
+type VoiceProfile struct {
+	UserID      string   `json:"user_id"`
+	Name        string   `json:"name"`
+	VoiceSamples []string `json:"voice_samples"` // Base64 encoded audio samples or file paths
+	CreatedAt   string   `json:"created_at"`
+	UpdatedAt   string   `json:"updated_at"`
+}
+
+type VoiceRegistrationRequest struct {
+	Name        string `json:"name" binding:"required"`
+	AudioData   string `json:"audio_data" binding:"required"` // Base64 encoded audio
+	AudioFormat string `json:"audio_format"` // "wav", "mp3", "webm", etc.
+}
+
+type VoiceRecognitionRequest struct {
+	AudioData   string `json:"audio_data" binding:"required"` // Base64 encoded audio
+	AudioFormat string `json:"audio_format"` // "wav", "mp3", "webm", etc.
+}
+
+type VoiceRecognitionResponse struct {
+	Recognized bool   `json:"recognized"`
+	UserID     string `json:"user_id,omitempty"`
+	Name       string `json:"name,omitempty"`
+	Transcript string `json:"transcript,omitempty"`
+	Intent     string `json:"intent,omitempty"` // "attendance", "punch_in", etc.
+	Message    string `json:"message"`
 }
 

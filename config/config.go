@@ -9,14 +9,15 @@ import (
 var FormSampleJSON string
 
 type Config struct {
-	Port         string
-	GeminiAPIKey string
-	ModelName    string
-	DBPath       string
-	SQLFilesDir  string
-	ResultsDir   string
-	SitesDir     string
-	SQLServer    SQLServerConfig
+	Port           string
+	GeminiAPIKey   string
+	ModelName      string
+	DBPath         string
+	SQLFilesDir    string
+	ResultsDir     string
+	SitesDir       string
+	VoiceSamplesDir string
+	SQLServer      SQLServerConfig
 }
 
 type SQLServerConfig struct {
@@ -35,10 +36,11 @@ func GetConfig() Config {
 		GeminiAPIKey: "sk-c0587cfb940347c4b2a3c96f62360649",
 		// ModelName:    getEnv("GEMINI_MODEL", "qwen3-coder"),
 		ModelName:    "qwen3-max",
-		DBPath:       getEnv("DB_PATH", "./data/badger"),
-		SQLFilesDir:  getEnv("SQL_FILES_DIR", "./sql_files"),
-		ResultsDir:   getEnv("RESULTS_DIR", "./results"),
-		SitesDir:     getEnv("SITES_DIR", "./sites"),
+		DBPath:         getEnv("DB_PATH", "./data/badger"),
+		SQLFilesDir:    getEnv("SQL_FILES_DIR", "./sql_files"),
+		ResultsDir:     getEnv("RESULTS_DIR", "./results"),
+		SitesDir:       getEnv("SITES_DIR", "./sites"),
+		VoiceSamplesDir: getEnv("VOICE_SAMPLES_DIR", "./voice_samples"),
 		SQLServer: SQLServerConfig{
 			Server:   getEnv("SQL_SERVER", "192.168.9.9"),
 			Port:     getEnv("SQL_PORT", "1433"),

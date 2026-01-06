@@ -29,16 +29,18 @@ type Handlers struct {
 	aiService        *ai.AIService
 	sqlService       *service.SQLServerService
 	complaintService *service.ComplaintService
+	voiceService     *service.VoiceService
 	sqlFilesDir      string
 }
 
 // New creates a new Handlers instance
-func New(db *db.DB, aiService *ai.AIService, sqlService *service.SQLServerService, sqlFilesDir string) *Handlers {
+func New(db *db.DB, aiService *ai.AIService, sqlService *service.SQLServerService, sqlFilesDir string, voiceSamplesDir string) *Handlers {
 	return &Handlers{
 		db:               db,
 		aiService:        aiService,
 		sqlService:       sqlService,
 		complaintService: service.NewComplaintService(),
+		voiceService:     service.NewVoiceService(voiceSamplesDir),
 		sqlFilesDir:      sqlFilesDir,
 	}
 }

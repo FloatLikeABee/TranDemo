@@ -42,6 +42,19 @@ func (h *Handlers) ChatHandler(c *gin.Context) {
 		userID = "admin"
 	}
 
+	// PRIORITY 0: Check if this is a voice input
+	if req.AudioData != "" {
+		log.Printf("[CHAT HANDLER] Voice input detected from user: %s", userID)
+		response, err := h.HandleVoiceChat(c, userID, req.AudioData)
+		if err != nil {
+			log.Printf("[CHAT HANDLER] Error handling voice chat: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to process voice: %v", err)})
+			return
+		}
+		c.JSON(http.StatusOK, response)
+		return
+	}
+
 	log.Printf("[CHAT HANDLER] User: %s, Message: %s", userID, req.Message)
 
 	// PRIORITY 1: Check if user has an active complaint conversation (simplified check)

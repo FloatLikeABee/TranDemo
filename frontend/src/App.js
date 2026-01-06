@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import SpeechRecognition, { useSpeechRecognition } from 'react-speech-recognition';
+import VoiceRegistrationModal from './VoiceRegistrationModal';
+import { useVoiceRecorder, sendVoiceToChat, formatTime } from './VoiceRecorder';
 import './App.css';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:9090';
@@ -22,8 +24,20 @@ function App() {
   const [isMicAvailable, setIsMicAvailable] = useState(true); // Optimistically assume available, will be checked
   const [isCheckingPermission, setIsCheckingPermission] = useState(true); // Track if we're still checking
   const [browserSupportChecked, setBrowserSupportChecked] = useState(false); // Track if we've checked browser support
+  const [showVoiceRegistration, setShowVoiceRegistration] = useState(false);
+  const [voiceMode, setVoiceMode] = useState('text'); // 'text' or 'voice'
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+
+  // Voice recorder for attendance
+  const {
+    isRecording: isVoiceRecording,
+    audioBlob: voiceAudioBlob,
+    recordingTime: voiceRecordingTime,
+    startRecording: startVoiceRecording,
+    stopRecording: stopVoiceRecording,
+    resetRecording: resetVoiceRecording
+  } = useVoiceRecorder();
 
   const {
     transcript,
@@ -178,6 +192,85 @@ function App() {
     }
   };
 
+  const handleVoiceAttendance = async () => {
+    if (isVoiceRecording) {
+      stopVoiceRecording();
+      return;
+    }
+
+    // Check if we're on HTTPS or localhost (browsers allow mic access on localhost even over HTTP)
+    const hostname = window.location.hostname;
+    const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0' || hostname === '';
+    const isSecure = window.isSecureContext || window.location.protocol === 'https:';
+    
+    // Only show warning if not localhost and not HTTPS
+    if (!isSecure && !isLocalhost) {
+      setMessages(prev => [...prev, {
+        type: 'error',
+        content: '⚠️ Voice features require HTTPS or localhost. For development, access via http://localhost:9090 or http://127.0.0.1:9090. For production, enable HTTPS.'
+      }]);
+      return;
+    }
+
+    try {
+      await startVoiceRecording();
+    } catch (error) {
+      console.error('Error starting voice recording:', error);
+      
+      let errorMessage = 'Failed to start recording. ';
+      if (error.message === 'SECURE_CONTEXT_REQUIRED' || error.name === 'NotAllowedError') {
+        if (!isSecure && !isLocalhost) {
+          errorMessage = '⚠️ Voice recording requires HTTPS or localhost. For development, access via http://localhost:9090 or http://127.0.0.1:9090. For production, enable HTTPS.';
+        } else {
+          errorMessage = 'Microphone permission denied. Please allow microphone access in your browser settings.';
+        }
+      } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+        errorMessage = 'No microphone found. Please connect a microphone device.';
+      } else {
+        errorMessage += error.message || 'Please check microphone permissions.';
+      }
+      
+      setMessages(prev => [...prev, {
+        type: 'error',
+        content: errorMessage
+      }]);
+    }
+  };
+
+  // Handle voice recording completion
+  useEffect(() => {
+    if (voiceAudioBlob && !isVoiceRecording) {
+      const sendVoice = async () => {
+        setLoading(true);
+        try {
+          const response = await sendVoiceToChat(voiceAudioBlob);
+          
+          setMessages(prev => [...prev, {
+            type: 'user',
+            content: '🎤 Voice attendance'
+          }]);
+          
+          setMessages(prev => [...prev, {
+            type: 'assistant',
+            content: response.response || 'Voice processed'
+          }]);
+          
+          resetVoiceRecording();
+        } catch (error) {
+          console.error('Error sending voice:', error);
+          setMessages(prev => [...prev, {
+            type: 'error',
+            content: error.response?.data?.error || 'Failed to process voice. Please try again.'
+          }]);
+        } finally {
+          setLoading(false);
+        }
+      };
+      
+      sendVoice();
+    }
+  }, [voiceAudioBlob, isVoiceRecording]);
+
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
     // You could add a toast notification here
@@ -291,6 +384,15 @@ function App() {
         <div className="chat-header">
           <h1>Transfinder Form/Report Assistant</h1>
           <p>Transform your data into beautiful forms and comprehensive reports with AI-powered precision</p>
+          <div className="header-actions">
+            <button
+              className="voice-register-button"
+              onClick={() => setShowVoiceRegistration(true)}
+              title="Register your voice for attendance"
+            >
+              🎙️ Register Voice
+            </button>
+          </div>
         </div>
 
         <div className="messages-container">
@@ -304,6 +406,20 @@ function App() {
                 <li>"Generate a monthly transportation report showing route statistics"</li>
                 <li>"Build a form to track student attendance by date and route"</li>
               </ul>
+              <div className="voice-feature-notice">
+                <p><strong>🎙️ Voice Attendance Feature:</strong></p>
+                <p>Click "Register Voice" to register your voice, then use the 📢 button to log attendance by saying your name followed by "I'm here" or "Punch in".</p>
+                {(() => {
+                  const hostname = window.location.hostname;
+                  const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0' || hostname === '';
+                  const isSecure = window.isSecureContext || window.location.protocol === 'https:';
+                  return !isSecure && !isLocalhost;
+                })() && (
+                  <p className="voice-https-warning">
+                    ⚠️ <strong>Note:</strong> Voice features require HTTPS or localhost. For development, access via <code>http://localhost:9090</code> or <code>http://127.0.0.1:9090</code>. For production, enable HTTPS.
+                  </p>
+                )}
+              </div>
             </div>
           )}
 
@@ -368,7 +484,7 @@ function App() {
               onChange={(e) => setInput(e.target.value)}
               placeholder="Type your SQL request here..."
               className="message-input"
-              disabled={loading || listening}
+              disabled={loading || listening || isVoiceRecording}
             />
             <button
               type="button"
@@ -379,7 +495,7 @@ function App() {
                 console.log('Button onClick fired');
                 await handleMicClick();
               }}
-              disabled={isMicDisabled || loading}
+              disabled={isMicDisabled || loading || isVoiceRecording}
               title={
                 isMicDisabled
                   ? 'Microphone not available or permission denied'
@@ -396,13 +512,34 @@ function App() {
             </button>
           </div>
           <button
+            type="button"
+            className={`voice-attendance-button ${isVoiceRecording ? 'recording' : ''}`}
+            onClick={handleVoiceAttendance}
+            disabled={loading || listening}
+            title={isVoiceRecording ? 'Stop voice recording' : 'Voice attendance (say your name + "I\'m here" or "Punch in")'}
+          >
+            {isVoiceRecording ? `⏹ ${formatTime(voiceRecordingTime)}` : '📢'}
+          </button>
+          <button
             type="submit"
             className="send-button"
-            disabled={loading || !input.trim() || listening}
+            disabled={loading || !input.trim() || listening || isVoiceRecording}
           >
             {loading ? '⏳' : '➤'}
           </button>
         </form>
+
+        <VoiceRegistrationModal
+          isOpen={showVoiceRegistration}
+          onClose={() => setShowVoiceRegistration(false)}
+          onSuccess={(name) => {
+            setShowVoiceRegistration(false);
+            setMessages(prev => [...prev, {
+              type: 'assistant',
+              content: `Voice registered successfully for ${name}! You can now use voice commands for attendance.`
+            }]);
+          }}
+        />
       </div>
     </div>
   );
