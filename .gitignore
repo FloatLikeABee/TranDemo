@@ -38,7 +38,6 @@ products/
 # SQL result and generated HTML files (if they end up outside the above folders)
 result_*.json
 result_*.csv
-*.html
 
 # Environment / secrets
 .env
