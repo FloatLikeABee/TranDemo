@@ -55,6 +55,16 @@ func (h *Handlers) ChatHandler(c *gin.Context) {
 		return
 	}
 
+	// PRIORITY 0.5: Correct spelling errors in user message
+	correctedMessage, err := h.aiService.CorrectSpelling(req.Message)
+	if err != nil {
+		log.Printf("[CHAT HANDLER] Error correcting spelling: %v, using original message", err)
+		correctedMessage = req.Message
+	} else if correctedMessage != req.Message {
+		log.Printf("[CHAT HANDLER] Spelling corrected: '%s' -> '%s'", req.Message, correctedMessage)
+		req.Message = correctedMessage
+	}
+
 	log.Printf("[CHAT HANDLER] User: %s, Message: %s", userID, req.Message)
 
 	// PRIORITY 1: Check if user has an active complaint conversation (simplified check)

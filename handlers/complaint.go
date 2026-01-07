@@ -86,6 +86,16 @@ func isComplaintRequest(message string) bool {
 
 // handleComplaintFlow handles the multi-step complaint filing process
 func (h *Handlers) handleComplaintFlow(c *gin.Context, userID, userMessage string) (*models.ChatResponse, error) {
+	// Correct spelling errors in user message before processing
+	correctedMessage, err := h.aiService.CorrectSpelling(userMessage)
+	if err != nil {
+		log.Printf("[COMPLAINT FLOW] Error correcting spelling: %v, using original message", err)
+		correctedMessage = userMessage
+	} else if correctedMessage != userMessage {
+		log.Printf("[COMPLAINT FLOW] Spelling corrected: '%s' -> '%s'", userMessage, correctedMessage)
+		userMessage = correctedMessage
+	}
+
 	// If user message is a complaint initiation phrase, ALWAYS start a NEW session
 	isNewComplaintRequest := isComplaintRequest(userMessage)
 

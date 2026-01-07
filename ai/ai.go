@@ -334,3 +334,67 @@ func (a *AIService) GenerateChatResponse(userPrompt string) (string, error) {
 
 	return chatResponse, nil
 }
+
+// CorrectSpelling corrects spelling errors in user input using AI
+// It preserves the user's intent while fixing typos and misspellings
+func (a *AIService) CorrectSpelling(userInput string) (string, error) {
+	// Skip correction for very short inputs or if input seems fine
+	if len(userInput) < 3 {
+		return userInput, nil
+	}
+
+	// Check cache first
+	cacheKey := fmt.Sprintf("spell_correct:%s", userInput)
+	if cached, found := a.cache.Get(cacheKey); found {
+		return cached.(string), nil
+	}
+
+	ctx := context.Background()
+
+	// Build prompt for spelling correction
+	prompt := fmt.Sprintf(`You are a spelling and grammar correction assistant. Your task is to correct spelling errors and typos in the user's message while preserving their exact meaning and intent. 
+
+IMPORTANT RULES:
+1. Only correct actual spelling mistakes and typos
+2. Preserve the user's original meaning and intent completely
+3. Keep the same tone and style
+4. Do NOT change words that are intentionally informal (like "wanna", "gonna", "yeah")
+5. Do NOT add or remove words unless they are clearly typos
+6. Fix spacing issues (e.g., "iwanna" -> "i wanna")
+7. Return ONLY the corrected text, nothing else - no explanations, no markdown, just the corrected message
+
+User's message to correct:
+"%s"
+
+Corrected message:`, userInput)
+
+	messages := []DashScopeMessage{
+		{
+			Role:    "user",
+			Content: prompt,
+		},
+	}
+
+	response, err := a.callDashScopeAPI(ctx, messages)
+	if err != nil {
+		// If AI correction fails, return original input
+		return userInput, nil
+	}
+
+	// Clean up the response
+	corrected := strings.TrimSpace(response)
+	// Remove any markdown code blocks if present
+	corrected = strings.TrimPrefix(corrected, "```")
+	corrected = strings.TrimSuffix(corrected, "```")
+	corrected = strings.TrimSpace(corrected)
+
+	// If correction is empty or same as input, return original
+	if corrected == "" || corrected == userInput {
+		return userInput, nil
+	}
+
+	// Cache the result
+	a.cache.SetDefault(cacheKey, corrected)
+
+	return corrected, nil
+}
