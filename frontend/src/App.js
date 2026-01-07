@@ -382,8 +382,7 @@ function App() {
     <div className="app">
       <div className="chat-container">
         <div className="chat-header">
-          <h1>Transfinder Form/Report Assistant</h1>
-          <p>Transform your data into beautiful forms and comprehensive reports with AI-powered precision</p>
+          <h1 className="app-title">Transfinder Form Assistant</h1>
           <div className="header-actions">
             <button
               className="voice-register-button"
@@ -399,10 +398,10 @@ function App() {
           {messages.length === 0 && (
             <div className="welcome-message">
               <div className="welcome-icon">🤖</div>
-              <h2>Welcome to Transfinder Form/Report Assistant</h2>
+              <h2>Welcome to Transfinder form assistant</h2>
               <p>Start by describing the form or report you need. For example:</p>
               <ul>
-                <li>"Create a student enrollment form with all required fields"</li>
+                <li>"File a complaint against a student"</li>
                 <li>"Generate a monthly transportation report showing route statistics"</li>
                 <li>"Build a form to track student attendance by date and route"</li>
               </ul>

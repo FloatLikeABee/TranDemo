@@ -37,6 +37,20 @@ func isComplaintRequest(message string) bool {
 		"complain about",
 		"complain against",
 		"report on",
+		"i need to report a student's behavior",
+		"need to report a student's behavior",
+		"report a student's behavior",
+		"report student's behavior",
+		"report student behavior",
+		"report behavior",
+		"behavior report",
+		"misconduct form",
+		"fill out a misconduct form",
+		"fill out misconduct form",
+		"misconduct",
+		"please help me fill out a misconduct form",
+		"help me fill out a misconduct form",
+		"help fill out misconduct form",
 	}
 
 	for _, phrase := range complaintPhrases {
@@ -64,6 +78,13 @@ func isComplaintRequest(message string) bool {
 		"assault",
 		"bully",
 		"bullying",
+		"misconduct",
+		"behavior",
+		"student's behavior",
+		"student behavior",
+		"on the bus",
+		"bus behavior",
+		"bus incident",
 	}
 	
 	// Check if message contains complaint indicators AND mentions a person/name
@@ -76,8 +97,14 @@ func isComplaintRequest(message string) bool {
 		}
 	}
 	
-	// If it has complaint indicators and mentions "on" or "against" (suggesting reporting someone), treat as complaint
-	if hasComplaintIndicator && (strings.Contains(lowerMsg, " on ") || strings.Contains(lowerMsg, " against ") || strings.Contains(lowerMsg, "complaint")) {
+	// If it has complaint indicators and mentions "on", "against", "report", "form", or "complaint" (suggesting reporting something), treat as complaint
+	if hasComplaintIndicator && (strings.Contains(lowerMsg, " on ") || 
+		strings.Contains(lowerMsg, " against ") || 
+		strings.Contains(lowerMsg, "complaint") ||
+		strings.Contains(lowerMsg, "report") ||
+		strings.Contains(lowerMsg, "form") ||
+		strings.Contains(lowerMsg, "misconduct") ||
+		strings.Contains(lowerMsg, "behavior")) {
 		return true
 	}
 

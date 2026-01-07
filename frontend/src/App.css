@@ -20,21 +20,58 @@
 .chat-header {
   background: #2a2a2a;
   color: #ffffff;
-  padding: 20px 30px;
+  padding: 12px 30px;
   text-align: center;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
   border-bottom: 2px solid #FF8C00;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 15px;
 }
 
-.chat-header h1 {
-  font-size: 28px;
-  margin-bottom: 8px;
-  font-weight: 600;
+.app-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0;
+  background: linear-gradient(135deg, #FF8C00 0%, #FFB84D 50%, #FF8C00 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  font-family: 'Segoe UI', 'Roboto', 'Arial', sans-serif;
+  text-shadow: 0 0 20px rgba(255, 140, 0, 0.3);
+  position: relative;
+  flex: 1;
+  text-align: center;
 }
 
-.chat-header p {
-  font-size: 14px;
-  opacity: 0.9;
+.app-title::before {
+  content: '';
+  position: absolute;
+  left: -10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 60%;
+  background: linear-gradient(180deg, #FF8C00, #FFB84D);
+  border-radius: 2px;
+  box-shadow: 0 0 10px rgba(255, 140, 0, 0.6);
+}
+
+.app-title::after {
+  content: '';
+  position: absolute;
+  right: -10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 60%;
+  background: linear-gradient(180deg, #FF8C00, #FFB84D);
+  border-radius: 2px;
+  box-shadow: 0 0 10px rgba(255, 140, 0, 0.6);
 }
 
 .messages-container {
@@ -413,10 +450,10 @@
 }
 
 .header-actions {
-  margin-top: 15px;
   display: flex;
   justify-content: center;
   gap: 10px;
+  margin: 0;
 }
 
 .voice-register-button {
@@ -484,15 +521,18 @@
   }
 
   .chat-header {
-    padding: 15px 20px;
+    padding: 10px 20px;
+    flex-direction: column;
   }
 
-  .chat-header h1 {
-    font-size: 22px;
+  .app-title {
+    font-size: 16px;
+    letter-spacing: 1px;
   }
 
-  .chat-header p {
-    font-size: 12px;
+  .app-title::before,
+  .app-title::after {
+    display: none;
   }
 
   .messages-container {

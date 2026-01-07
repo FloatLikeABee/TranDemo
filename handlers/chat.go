@@ -164,9 +164,8 @@ func (h *Handlers) ChatHandler(c *gin.Context) {
 		responseText = fmt.Sprintf("Here's the form JSON based on your request:\n\n%s", formJSON)
 	} else {
 		// Check if the prompt contains report-related keywords
-		hasReportKeywords := strings.Contains(lowerPrompt, "report") ||
-			strings.Contains(lowerPrompt, "generate") ||
-			strings.Contains(lowerPrompt, "create") ||
+		hasReportKeywords := strings.Contains(lowerPrompt, "generate") ||
+			strings.Contains(lowerPrompt, "create report") ||
 			strings.Contains(lowerPrompt, "i want a report") ||
 			strings.Contains(lowerPrompt, "i need to make") ||
 			strings.Contains(lowerPrompt, "i need a report") ||
