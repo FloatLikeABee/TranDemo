@@ -65,36 +65,21 @@ func main() {
 	r := gin.Default()
 
 	// CORS configuration - Allow ALL origins, headers, and methods
+	// Simplified for nginx proxy compatibility - always allow all origins
 	r.Use(func(c *gin.Context) {
-		origin := c.Request.Header.Get("Origin")
-		
-		// Always allow the requesting origin (allows all origins dynamically)
-		// If no origin header, use * (for non-browser requests)
-		if origin != "" {
-			c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
-			c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
-		} else {
-			c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-			c.Writer.Header().Set("Access-Control-Allow-Credentials", "false")
-		}
-		
-		// Allow all headers and methods
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, Accept, Origin, Cache-Control, X-Requested-With, X-User-ID")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD")
+		// Always allow all origins (required for nginx proxy)
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD, CONNECT, TRACE")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "*")
 		c.Writer.Header().Set("Access-Control-Expose-Headers", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Credentials", "false")
 		c.Writer.Header().Set("Access-Control-Max-Age", "86400")
 
 		// Handle preflight OPTIONS requests
 		if c.Request.Method == "OPTIONS" {
-			if origin != "" {
-				c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
-				c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
-			} else {
-				c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-				c.Writer.Header().Set("Access-Control-Allow-Credentials", "false")
-			}
-			c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, Accept, Origin, Cache-Control, X-Requested-With, X-User-ID")
-			c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD")
+			c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+			c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD, CONNECT, TRACE")
+			c.Writer.Header().Set("Access-Control-Allow-Headers", "*")
 			c.AbortWithStatus(204)
 			return
 		}
@@ -123,6 +108,16 @@ func main() {
 	r.POST("/api/voice/recognize", h.RecognizeVoiceHandler)
 	r.GET("/api/voice/profiles", h.ListVoiceProfilesHandler)
 	r.DELETE("/api/voice/profile/:user_id", h.DeleteVoiceProfileHandler)
+
+	// Products routes
+	r.GET("/api/products/files", h.ListProductsHandler)
+	r.GET("/products/index.html", func(c *gin.Context) {
+		c.File("./products/index.html")
+	})
+	r.GET("/products/", func(c *gin.Context) {
+		c.File("./products/index.html")
+	})
+	r.GET("/products/:filename", h.ServeProductHandler)
 
 	// Serve static files (for React app)
 	r.Static("/static", "./frontend/build/static")

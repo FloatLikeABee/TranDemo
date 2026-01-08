@@ -26,8 +26,16 @@ function App() {
   const [browserSupportChecked, setBrowserSupportChecked] = useState(false); // Track if we've checked browser support
   const [showVoiceRegistration, setShowVoiceRegistration] = useState(false);
   const [voiceMode, setVoiceMode] = useState('text'); // 'text' or 'voice'
+  const [continuousVoiceMode, setContinuousVoiceMode] = useState(false); // Track if voice input should stay active
+  const [isSpeaking, setIsSpeaking] = useState(false); // Track if TTS is currently speaking
+  const [voiceReadingEnabled, setVoiceReadingEnabled] = useState(true); // Toggle for voice reading
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  const silenceTimerRef = useRef(null);
+  const lastTranscriptRef = useRef('');
+  const speechSynthesisRef = useRef(null);
+  const femaleVoiceRef = useRef(null);
+  const lastSpokenMessageRef = useRef('');
 
   // Voice recorder for attendance
   const {
@@ -53,6 +61,253 @@ function App() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Initialize speech synthesis and find female voice
+  useEffect(() => {
+    if ('speechSynthesis' in window) {
+      speechSynthesisRef.current = window.speechSynthesis;
+      
+      // Function to find and set female voice - STRICT filtering
+      const findFemaleVoice = () => {
+        const voices = speechSynthesisRef.current.getVoices();
+        
+        // First, explicitly exclude male voices
+        const maleVoiceNames = ['male', 'man', 'david', 'mark', 'richard', 'james', 'john', 'michael', 'daniel', 'paul', 'thomas', 'steven', 'andrew', 'robert', 'william', 'george', 'harry', 'peter', 'simon', 'tom'];
+        
+        // Try to find a female voice - be very strict
+        const femaleVoices = voices.filter(voice => {
+          const name = voice.name.toLowerCase();
+          
+          // Explicitly exclude male voices
+          if (maleVoiceNames.some(maleName => name.includes(maleName))) {
+            return false;
+          }
+          
+          // Look for explicit female indicators
+          return name.includes('female') || 
+                 name.includes('woman') || 
+                 name.includes('zira') || // Microsoft Zira (female)
+                 name.includes('samantha') || // Apple Samantha (female)
+                 name.includes('karen') || // Australian English (female)
+                 name.includes('fiona') || // Scottish English (female)
+                 name.includes('tessa') || // South African English (female)
+                 name.includes('susan') || // US English (female)
+                 name.includes('hazel') || // UK English (female)
+                 name.includes('aria') || // Microsoft Aria (female)
+                 name.includes('jenny') || // Microsoft Jenny (female)
+                 name.includes('linda') || // Microsoft Linda (female)
+                 name.includes('heather') || // Microsoft Heather (female)
+                 name.includes('michelle') || // Microsoft Michelle (female)
+                 name.includes('zira') || // Microsoft Zira
+                 (voice.lang.startsWith('en') && voice.gender === 'female');
+        });
+        
+        if (femaleVoices.length > 0) {
+          // Prefer US English female voices
+          const usFemale = femaleVoices.find(v => v.lang.startsWith('en-US'));
+          if (usFemale) {
+            femaleVoiceRef.current = usFemale;
+            console.log('Selected US English female voice:', femaleVoiceRef.current.name, femaleVoiceRef.current.lang);
+          } else {
+            // Use first available female voice
+            femaleVoiceRef.current = femaleVoices[0];
+            console.log('Selected female voice:', femaleVoiceRef.current.name, femaleVoiceRef.current.lang);
+          }
+        } else {
+          console.warn('No female voice found. Please install a female voice on your system.');
+          // Don't set a fallback - we want to ensure it's female
+        }
+      };
+      
+      // Load voices (may need to wait for voices to be loaded)
+      if (speechSynthesisRef.current.getVoices().length > 0) {
+        findFemaleVoice();
+      } else {
+        // Some browsers need this event
+        speechSynthesisRef.current.onvoiceschanged = findFemaleVoice;
+        // Also try immediately after a short delay
+        setTimeout(findFemaleVoice, 100);
+      }
+    }
+    
+    return () => {
+      // Cancel any ongoing speech when component unmounts
+      if (speechSynthesisRef.current) {
+        speechSynthesisRef.current.cancel();
+      }
+    };
+  }, []);
+
+  // Function to clean text for speech (remove SQL blocks, code, etc.)
+  const cleanTextForSpeech = (text) => {
+    if (!text) return '';
+    
+    // Remove SQL blocks
+    let cleaned = text.replace(/Here's the SQL query based on your request:\n\n/g, '');
+    cleaned = cleaned.replace(/```[\s\S]*?```/g, ''); // Remove code blocks
+    cleaned = cleaned.replace(/`[^`]+`/g, ''); // Remove inline code
+    cleaned = cleaned.replace(/\n{3,}/g, '\n\n'); // Normalize multiple newlines
+    cleaned = cleaned.trim();
+    
+    return cleaned;
+  };
+
+  // Speak assistant messages when they appear
+  useEffect(() => {
+    if (!voiceReadingEnabled) return; // Skip if voice reading is disabled
+    if (!speechSynthesisRef.current || !femaleVoiceRef.current) return;
+    
+    // Find the last assistant message
+    const lastAssistantMessage = messages
+      .slice()
+      .reverse()
+      .find(msg => msg.type === 'assistant');
+    
+    if (lastAssistantMessage && lastAssistantMessage.content) {
+      // Use content hash to track spoken messages more reliably
+      const messageKey = lastAssistantMessage.content;
+      
+      // Check if we've already spoken this exact message
+      if (lastSpokenMessageRef.current === messageKey) {
+        return; // Already spoken this message
+      }
+      
+      // Stop voice input while speaking
+      const wasListening = listening;
+      if (wasListening && continuousVoiceMode) {
+        SpeechRecognition.stopListening();
+      }
+      
+      // Cancel any ongoing speech
+      speechSynthesisRef.current.cancel();
+      
+      // Clean the text for speech
+      const textToSpeak = cleanTextForSpeech(lastAssistantMessage.content);
+      
+      if (textToSpeak) {
+        // Mark this message as spoken immediately to prevent duplicates
+        lastSpokenMessageRef.current = messageKey;
+        
+        // Small delay to ensure message is displayed
+        setTimeout(() => {
+          // Double-check we have a female voice before speaking
+          if (!femaleVoiceRef.current) {
+            console.warn('No female voice available, skipping speech');
+            // Resume voice input if needed
+            if (wasListening && continuousVoiceMode && browserSupportsSpeechRecognition && micPermission === true) {
+              setTimeout(() => {
+                try {
+                  resetTranscript();
+                  SpeechRecognition.startListening({ 
+                    continuous: true, 
+                    language: 'en-US',
+                    interimResults: true
+                  });
+                } catch (error) {
+                  console.error('Error restarting speech recognition:', error);
+                }
+              }, 300);
+            }
+            return;
+          }
+          
+          // Final safety check - verify voice name doesn't contain male indicators
+          const voiceName = femaleVoiceRef.current.name.toLowerCase();
+          const maleIndicators = ['male', 'man', 'david', 'mark', 'richard', 'james', 'john', 'michael'];
+          if (maleIndicators.some(indicator => voiceName.includes(indicator))) {
+            console.warn('Selected voice appears to be male, skipping speech:', femaleVoiceRef.current.name);
+            // Resume voice input if needed
+            if (wasListening && continuousVoiceMode && browserSupportsSpeechRecognition && micPermission === true) {
+              setTimeout(() => {
+                try {
+                  resetTranscript();
+                  SpeechRecognition.startListening({ 
+                    continuous: true, 
+                    language: 'en-US',
+                    interimResults: true
+                  });
+                } catch (error) {
+                  console.error('Error restarting speech recognition:', error);
+                }
+              }, 300);
+            }
+            return;
+          }
+          
+          const utterance = new SpeechSynthesisUtterance(textToSpeak);
+          utterance.voice = femaleVoiceRef.current;
+          utterance.rate = 1.0; // Normal speed
+          utterance.pitch = 1.0; // Normal pitch
+          utterance.volume = 1.0; // Full volume
+          
+          // Set speaking state to true
+          setIsSpeaking(true);
+          
+          utterance.onstart = () => {
+            setIsSpeaking(true);
+          };
+          
+          utterance.onerror = (event) => {
+            console.error('Speech synthesis error:', event);
+            setIsSpeaking(false);
+            // Resume voice input on error
+            if (wasListening && continuousVoiceMode && browserSupportsSpeechRecognition && micPermission === true) {
+              setTimeout(() => {
+                try {
+                  resetTranscript();
+                  SpeechRecognition.startListening({ 
+                    continuous: true, 
+                    language: 'en-US',
+                    interimResults: true
+                  });
+                } catch (error) {
+                  console.error('Error restarting speech recognition:', error);
+                }
+              }, 500);
+            }
+          };
+          
+          utterance.onend = () => {
+            setIsSpeaking(false);
+            // Resume voice input after speech ends
+            if (wasListening && continuousVoiceMode && browserSupportsSpeechRecognition && micPermission === true) {
+              setTimeout(() => {
+                try {
+                  resetTranscript();
+                  SpeechRecognition.startListening({ 
+                    continuous: true, 
+                    language: 'en-US',
+                    interimResults: true
+                  });
+                } catch (error) {
+                  console.error('Error restarting speech recognition:', error);
+                }
+              }, 300);
+            }
+          };
+          
+          speechSynthesisRef.current.speak(utterance);
+        }, 300);
+      } else {
+        // If no text to speak, resume voice input immediately
+        setIsSpeaking(false);
+        if (wasListening && continuousVoiceMode && browserSupportsSpeechRecognition && micPermission === true) {
+          setTimeout(() => {
+            try {
+              resetTranscript();
+              SpeechRecognition.startListening({ 
+                continuous: true, 
+                language: 'en-US',
+                interimResults: true
+              });
+            } catch (error) {
+              console.error('Error restarting speech recognition:', error);
+            }
+          }, 300);
+        }
+      }
+    }
+  }, [messages, listening, continuousVoiceMode, browserSupportsSpeechRecognition, micPermission, voiceReadingEnabled]);
 
   // Request microphone permission on page load
   useEffect(() => {
@@ -146,24 +401,100 @@ function App() {
     return () => clearTimeout(timer);
   }, [browserSupportsSpeechRecognition]);
 
-  // Update input when transcript changes
+  // Update input when transcript changes (but not when TTS is speaking)
   useEffect(() => {
-    if (transcript) {
+    if (transcript && !isSpeaking) {
       setInput(transcript);
+      lastTranscriptRef.current = transcript;
+      
+      // Reset silence timer when transcript updates (but not when TTS is speaking)
+      if (continuousVoiceMode && listening && !loading && !isSpeaking) {
+        if (silenceTimerRef.current) {
+          clearTimeout(silenceTimerRef.current);
+        }
+        
+        // Set timer for 3 seconds of silence
+        silenceTimerRef.current = setTimeout(() => {
+          // Auto-send if there's text in the input
+          const currentTranscript = transcript.trim();
+          if (currentTranscript) {
+            // Stop listening temporarily
+            if (listening) {
+              SpeechRecognition.stopListening();
+            }
+            
+            const userMessage = currentTranscript;
+            setInput('');
+            resetTranscript();
+            setMessages(prev => [...prev, { type: 'user', content: userMessage }]);
+            setLoading(true);
+
+            axios.post(`${API_BASE_URL}/api/chat`, {
+              message: userMessage
+            }).then(response => {
+              const aiResponse = response.data.response;
+              const sql = response.data.sql;
+
+              setMessages(prev => [...prev, {
+                type: 'assistant',
+                content: aiResponse,
+                sql: sql
+              }]);
+            }).catch(error => {
+              console.error('Error:', error);
+              setMessages(prev => [...prev, {
+                type: 'error',
+                content: error.response?.data?.error || 'Failed to get response. Please try again.'
+              }]);
+            }).finally(() => {
+              setLoading(false);
+              
+              // Restart listening if continuous voice mode is enabled
+              if (continuousVoiceMode && browserSupportsSpeechRecognition && micPermission === true) {
+                setTimeout(() => {
+                  try {
+                    resetTranscript();
+                    SpeechRecognition.startListening({ 
+                      continuous: true, 
+                      language: 'en-US',
+                      interimResults: true
+                    });
+                  } catch (error) {
+                    console.error('Error restarting speech recognition:', error);
+                  }
+                }, 500);
+              }
+            });
+          }
+        }, 3000);
+      }
     }
-  }, [transcript]);
+    
+    return () => {
+      if (silenceTimerRef.current) {
+        clearTimeout(silenceTimerRef.current);
+      }
+    };
+  }, [transcript, continuousVoiceMode, listening, loading, browserSupportsSpeechRecognition, micPermission, isSpeaking]);
 
   const handleSend = async (e) => {
     e.preventDefault();
     if (!input.trim() || loading) return;
 
-    // Stop listening if currently recording
+    // Clear silence timer
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current);
+      silenceTimerRef.current = null;
+    }
+
+    // Stop listening temporarily
     if (listening) {
       SpeechRecognition.stopListening();
     }
 
     const userMessage = input.trim();
     setInput('');
+    resetTranscript();
     setMessages(prev => [...prev, { type: 'user', content: userMessage }]);
     setLoading(true);
 
@@ -188,7 +519,24 @@ function App() {
       }]);
     } finally {
       setLoading(false);
-      inputRef.current?.focus();
+      
+      // Restart listening if continuous voice mode is enabled
+      if (continuousVoiceMode && browserSupportsSpeechRecognition && micPermission === true) {
+        setTimeout(() => {
+          try {
+            resetTranscript();
+            SpeechRecognition.startListening({ 
+              continuous: true, 
+              language: 'en-US',
+              interimResults: true
+            });
+          } catch (error) {
+            console.error('Error restarting speech recognition:', error);
+          }
+        }, 500);
+      } else {
+        inputRef.current?.focus();
+      }
     }
   };
 
@@ -343,18 +691,26 @@ function App() {
       console.log('Stopping listening...');
       SpeechRecognition.stopListening();
       resetTranscript();
+      setContinuousVoiceMode(false);
+      setInput('');
+      if (silenceTimerRef.current) {
+        clearTimeout(silenceTimerRef.current);
+        silenceTimerRef.current = null;
+      }
     } else {
-      console.log('Starting listening...');
+      console.log('Starting continuous listening...');
       resetTranscript();
+      setContinuousVoiceMode(true);
       try {
         SpeechRecognition.startListening({ 
           continuous: true, 
           language: 'en-US',
           interimResults: true
         });
-        console.log('Listening started successfully');
+        console.log('Continuous listening started successfully');
       } catch (error) {
         console.error('Error starting speech recognition:', error);
+        setContinuousVoiceMode(false);
         alert('Failed to start voice input: ' + (error.message || 'Unknown error'));
       }
     }
@@ -384,6 +740,20 @@ function App() {
         <div className="chat-header">
           <h1 className="app-title">Transfinder Form Assistant</h1>
           <div className="header-actions">
+            <button
+              className={`voice-reading-toggle ${voiceReadingEnabled ? 'enabled' : 'disabled'}`}
+              onClick={() => {
+                setVoiceReadingEnabled(!voiceReadingEnabled);
+                // Cancel any ongoing speech when disabling
+                if (voiceReadingEnabled && speechSynthesisRef.current) {
+                  speechSynthesisRef.current.cancel();
+                  setIsSpeaking(false);
+                }
+              }}
+              title={voiceReadingEnabled ? 'Disable voice reading (text only)' : 'Enable voice reading'}
+            >
+              {voiceReadingEnabled ? '🔊 Voice On' : '🔇 Voice Off'}
+            </button>
             <button
               className="voice-register-button"
               onClick={() => setShowVoiceRegistration(true)}
@@ -481,9 +851,9 @@ function App() {
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Type your SQL request here..."
+              placeholder={isSpeaking ? "🔊 Computer is reading..." : (listening ? "🎤 Listening... (auto-sends after 3s silence)" : "Type your SQL request here...")}
               className="message-input"
-              disabled={loading || listening || isVoiceRecording}
+              disabled={loading || isVoiceRecording || isSpeaking}
             />
             <button
               type="button"
@@ -494,7 +864,7 @@ function App() {
                 console.log('Button onClick fired');
                 await handleMicClick();
               }}
-              disabled={isMicDisabled || loading || isVoiceRecording}
+              disabled={isMicDisabled || loading || isVoiceRecording || isSpeaking}
               title={
                 isMicDisabled
                   ? 'Microphone not available or permission denied'
@@ -503,8 +873,8 @@ function App() {
                   : micPermission === null
                   ? 'Click to request microphone permission'
                   : listening
-                  ? 'Stop recording'
-                  : 'Start voice input'
+                  ? 'Stop continuous voice input (auto-sends after 3s silence)'
+                  : 'Start continuous voice input (auto-sends after 3s silence)'
               }
             >
               {listening ? '🛑' : (micPermission === null || isCheckingPermission) && !isMicDisabled ? '🎤?' : '🎤'}
@@ -514,7 +884,7 @@ function App() {
             type="button"
             className={`voice-attendance-button ${isVoiceRecording ? 'recording' : ''}`}
             onClick={handleVoiceAttendance}
-            disabled={loading || listening}
+            disabled={loading || listening || isSpeaking}
             title={isVoiceRecording ? 'Stop voice recording' : 'Voice attendance (say your name + "I\'m here" or "Punch in")'}
           >
             {isVoiceRecording ? `⏹ ${formatTime(voiceRecordingTime)}` : '📢'}
@@ -522,7 +892,7 @@ function App() {
           <button
             type="submit"
             className="send-button"
-            disabled={loading || !input.trim() || listening || isVoiceRecording}
+            disabled={loading || !input.trim() || listening || isVoiceRecording || isSpeaking}
           >
             {loading ? '⏳' : '➤'}
           </button>

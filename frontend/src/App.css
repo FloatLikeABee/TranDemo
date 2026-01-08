@@ -456,6 +456,40 @@
   margin: 0;
 }
 
+.voice-reading-toggle {
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 2px solid;
+}
+
+.voice-reading-toggle.enabled {
+  border-color: #4CAF50;
+  background: transparent;
+  color: #4CAF50;
+}
+
+.voice-reading-toggle.enabled:hover {
+  background: #4CAF50;
+  color: white;
+  transform: scale(1.05);
+}
+
+.voice-reading-toggle.disabled {
+  border-color: #666;
+  background: transparent;
+  color: #666;
+}
+
+.voice-reading-toggle.disabled:hover {
+  background: #666;
+  color: white;
+  transform: scale(1.05);
+}
+
 .voice-register-button {
   padding: 8px 16px;
   border: 2px solid #FF8C00;

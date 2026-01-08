@@ -78,13 +78,22 @@ export const useVoiceRecorder = () => {
   };
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
+    if (mediaRecorderRef.current) {
+      // Check if recorder is actually recording (state might be async)
+      if (mediaRecorderRef.current.state === 'recording') {
+        mediaRecorderRef.current.stop();
+      }
       setIsRecording(false);
       
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
+      }
+      
+      // Stop all tracks
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
       }
     }
   };

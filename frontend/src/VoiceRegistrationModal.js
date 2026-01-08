@@ -59,6 +59,10 @@ const VoiceRegistrationModal = ({ isOpen, onClose, onSuccess }) => {
 
   const handleStopRecording = () => {
     stopRecording();
+    // Update step after stopping
+    if (audioBlob || recordingTime > 0) {
+      setStep('input'); // Go back to input step to show preview
+    }
   };
 
   const handleSubmit = async () => {
