@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"idongivaflyinfa/cache"
@@ -16,11 +17,15 @@ import (
 )
 
 type AIService struct {
-	apiKey    string
-	modelName string
-	cache     *cache.Cache
-	httpClient *http.Client
-	apiURL    string
+	apiKey               string
+	modelName            string
+	cache                *cache.Cache
+	httpClient           *http.Client
+	httpClientLongTimeout *http.Client // For operations that may take longer (HTML generation)
+	apiURL               string
+	lastRequestTime      time.Time    // Track last request time for rate limiting
+	requestMutex         sync.Mutex   // Mutex to protect lastRequestTime
+	minRequestInterval   time.Duration // Minimum time between requests
 }
 
 type DashScopeRequest struct {
@@ -53,13 +58,21 @@ func New(apiKey string, modelName string, cache *cache.Cache) (*AIService, error
 	httpClient := &http.Client{
 		Timeout: 120 * time.Second,
 	}
+	
+	// HTTP client with longer timeout for HTML generation (5 minutes)
+	httpClientLongTimeout := &http.Client{
+		Timeout: 300 * time.Second,
+	}
 
 	return &AIService{
-		apiKey:     apiKey,
-		modelName:  modelName,
-		cache:      cache,
-		httpClient: httpClient,
-		apiURL:     "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation",
+		apiKey:               apiKey,
+		modelName:            modelName,
+		cache:                cache,
+		httpClient:           httpClient,
+		httpClientLongTimeout: httpClientLongTimeout,
+		apiURL:               "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation",
+		lastRequestTime:      time.Time{},
+		minRequestInterval:   500 * time.Millisecond, // Minimum 500ms between requests
 	}, nil
 }
 
@@ -69,6 +82,30 @@ func (a *AIService) Close() error {
 }
 
 func (a *AIService) callDashScopeAPI(ctx context.Context, messages []DashScopeMessage) (string, error) {
+	return a.callDashScopeAPIWithClient(ctx, messages, a.httpClient)
+}
+
+// rateLimit ensures minimum time between requests to prevent burst rate errors
+func (a *AIService) rateLimit() {
+	a.requestMutex.Lock()
+	defer a.requestMutex.Unlock()
+
+	now := time.Now()
+	timeSinceLastRequest := now.Sub(a.lastRequestTime)
+
+	if timeSinceLastRequest < a.minRequestInterval {
+		// Need to wait to maintain minimum interval
+		waitTime := a.minRequestInterval - timeSinceLastRequest
+		time.Sleep(waitTime)
+	}
+
+	a.lastRequestTime = time.Now()
+}
+
+func (a *AIService) callDashScopeAPIWithClient(ctx context.Context, messages []DashScopeMessage, client *http.Client) (string, error) {
+	// Apply rate limiting before making request
+	a.rateLimit()
+
 	reqBody := DashScopeRequest{
 		Model: a.modelName,
 	}
@@ -79,62 +116,117 @@ func (a *AIService) callDashScopeAPI(ctx context.Context, messages []DashScopeMe
 		return "", fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "POST", a.apiURL, bytes.NewBuffer(jsonData))
-	if err != nil {
-		return "", fmt.Errorf("failed to create request: %w", err)
-	}
+	// Retry logic with exponential backoff for rate limit errors
+	maxRetries := 3
+	baseDelay := 2 * time.Second
 
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", a.apiKey))
-	req.Header.Set("Content-Type", "application/json")
-	
-	// Debug: Print request details (remove in production)
-	fmt.Printf("Request URL: %s\n", a.apiURL)
-	fmt.Printf("Request Model: %s\n", a.modelName)
-	fmt.Printf("Request Body: %s\n", string(jsonData))
-
-	resp, err := a.httpClient.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("failed to send request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("failed to read response: %w", err)
-	}
-
-	// Debug: Print response details
-	fmt.Printf("Response Status: %d\n", resp.StatusCode)
-	fmt.Printf("Response Body: %s\n", string(body))
-
-	if resp.StatusCode != http.StatusOK {
-		// Try to parse error response
-		var errorResp struct {
-			Code      string `json:"code"`
-			Message   string `json:"message"`
-			RequestID string `json:"request_id"`
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		if attempt > 0 {
+			// Exponential backoff: 2s, 4s, 8s
+			delay := baseDelay * time.Duration(1<<uint(attempt-1))
+			fmt.Printf("Rate limit hit, retrying after %v (attempt %d/%d)\n", delay, attempt, maxRetries)
+			time.Sleep(delay)
+			// Re-apply rate limiting after backoff
+			a.rateLimit()
 		}
-		if err := json.Unmarshal(body, &errorResp); err == nil {
-			return "", fmt.Errorf("API error (status %d): %s - %s (request_id: %s)", 
-				resp.StatusCode, errorResp.Code, errorResp.Message, errorResp.RequestID)
+
+		req, err := http.NewRequestWithContext(ctx, "POST", a.apiURL, bytes.NewBuffer(jsonData))
+		if err != nil {
+			return "", fmt.Errorf("failed to create request: %w", err)
 		}
-		return "", fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(body))
+
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", a.apiKey))
+		req.Header.Set("Content-Type", "application/json")
+		
+		// Debug: Print request details (remove in production)
+		if attempt == 0 {
+			fmt.Printf("Request URL: %s\n", a.apiURL)
+			fmt.Printf("Request Model: %s\n", a.modelName)
+			fmt.Printf("Request Body: %s\n", string(jsonData))
+		}
+
+		resp, err := client.Do(req)
+		if err != nil {
+			if attempt < maxRetries {
+				continue // Retry on network errors
+			}
+			return "", fmt.Errorf("failed to send request: %w", err)
+		}
+
+		body, err := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if err != nil {
+			if attempt < maxRetries {
+				continue // Retry on read errors
+			}
+			return "", fmt.Errorf("failed to read response: %w", err)
+		}
+
+		// Debug: Print response details
+		fmt.Printf("Response Status: %d\n", resp.StatusCode)
+		if resp.StatusCode != http.StatusOK {
+			fmt.Printf("Response Body: %s\n", string(body))
+		}
+
+		// Handle rate limiting (429) with retry
+		if resp.StatusCode == http.StatusTooManyRequests {
+			if attempt < maxRetries {
+				// Try to parse error response for more details
+				var errorResp struct {
+					Code      string `json:"code"`
+					Message   string `json:"message"`
+					RequestID string `json:"request_id"`
+				}
+				if err := json.Unmarshal(body, &errorResp); err == nil {
+					fmt.Printf("Rate limit error: %s - %s (request_id: %s)\n", 
+						errorResp.Code, errorResp.Message, errorResp.RequestID)
+				}
+				continue // Retry with backoff
+			}
+			// Max retries reached, return error
+			var errorResp struct {
+				Code      string `json:"code"`
+				Message   string `json:"message"`
+				RequestID string `json:"request_id"`
+			}
+			if err := json.Unmarshal(body, &errorResp); err == nil {
+				return "", fmt.Errorf("API error (status %d): %s - %s (request_id: %s). Max retries exceeded.", 
+					resp.StatusCode, errorResp.Code, errorResp.Message, errorResp.RequestID)
+			}
+			return "", fmt.Errorf("API returned status %d: %s. Max retries exceeded.", resp.StatusCode, string(body))
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			// Try to parse error response
+			var errorResp struct {
+				Code      string `json:"code"`
+				Message   string `json:"message"`
+				RequestID string `json:"request_id"`
+			}
+			if err := json.Unmarshal(body, &errorResp); err == nil {
+				return "", fmt.Errorf("API error (status %d): %s - %s (request_id: %s)", 
+					resp.StatusCode, errorResp.Code, errorResp.Message, errorResp.RequestID)
+			}
+			return "", fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(body))
+		}
+
+		var dashScopeResp DashScopeResponse
+		if err := json.Unmarshal(body, &dashScopeResp); err != nil {
+			return "", fmt.Errorf("failed to unmarshal response: %w", err)
+		}
+
+		if dashScopeResp.Code != "" && dashScopeResp.Code != "Success" {
+			return "", fmt.Errorf("API error: %s - %s", dashScopeResp.Code, dashScopeResp.Message)
+		}
+
+		if len(dashScopeResp.Output.Choices) == 0 {
+			return "", fmt.Errorf("no response from AI model")
+		}
+
+		return dashScopeResp.Output.Choices[0].Message.Content, nil
 	}
 
-	var dashScopeResp DashScopeResponse
-	if err := json.Unmarshal(body, &dashScopeResp); err != nil {
-		return "", fmt.Errorf("failed to unmarshal response: %w", err)
-	}
-
-	if dashScopeResp.Code != "" && dashScopeResp.Code != "Success" {
-		return "", fmt.Errorf("API error: %s - %s", dashScopeResp.Code, dashScopeResp.Message)
-	}
-
-	if len(dashScopeResp.Output.Choices) == 0 {
-		return "", fmt.Errorf("no response from AI model")
-	}
-
-	return dashScopeResp.Output.Choices[0].Message.Content, nil
+	return "", fmt.Errorf("max retries exceeded")
 }
 
 func (a *AIService) GenerateSQL(userPrompt string, sqlFiles []models.SQLFile) (string, error) {
@@ -226,7 +318,9 @@ func (a *AIService) GenerateForm(userPrompt string) (string, error) {
 }
 
 func (a *AIService) GenerateHTMLPage(resultFile *models.ResultFile, title string) (string, error) {
-	ctx := context.Background()
+	// Use context with longer timeout for HTML generation (5 minutes)
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+	defer cancel()
 
 	// Build prompt using helper
 	prompt := BuildHTMLPagePrompt(resultFile, title)
@@ -238,7 +332,8 @@ func (a *AIService) GenerateHTMLPage(resultFile *models.ResultFile, title string
 		},
 	}
 
-	response, err := a.callDashScopeAPI(ctx, messages)
+	// Use the long timeout client for HTML generation
+	response, err := a.callDashScopeAPIWithClient(ctx, messages, a.httpClientLongTimeout)
 	if err != nil {
 		return "", fmt.Errorf("failed to generate HTML: %w", err)
 	}
@@ -255,7 +350,9 @@ func (a *AIService) GenerateHTMLPage(resultFile *models.ResultFile, title string
 }
 
 func (a *AIService) GenerateFormHTMLPage(formJSON string) (string, error) {
-	ctx := context.Background()
+	// Use context with longer timeout for HTML generation (5 minutes)
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+	defer cancel()
 
 	// Parse form JSON to extract form name and description
 	var formData map[string]interface{}
@@ -282,7 +379,8 @@ func (a *AIService) GenerateFormHTMLPage(formJSON string) (string, error) {
 		},
 	}
 
-	response, err := a.callDashScopeAPI(ctx, messages)
+	// Use the long timeout client for HTML generation
+	response, err := a.callDashScopeAPIWithClient(ctx, messages, a.httpClientLongTimeout)
 	if err != nil {
 		return "", fmt.Errorf("failed to generate form HTML: %w", err)
 	}

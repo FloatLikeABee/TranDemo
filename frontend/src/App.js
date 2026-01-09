@@ -28,7 +28,7 @@ function App() {
   const [voiceMode, setVoiceMode] = useState('text'); // 'text' or 'voice'
   const [continuousVoiceMode, setContinuousVoiceMode] = useState(false); // Track if voice input should stay active
   const [isSpeaking, setIsSpeaking] = useState(false); // Track if TTS is currently speaking
-  const [voiceReadingEnabled, setVoiceReadingEnabled] = useState(true); // Toggle for voice reading
+  const [voiceReadingEnabled, setVoiceReadingEnabled] = useState(false); // Toggle for voice reading (default: off)
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const silenceTimerRef = useRef(null);
