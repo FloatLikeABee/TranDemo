@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transfinder Form Assistant Design - Home</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <a href="index.html" class="logo">Transfinder Form Assistant Design</a>
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="architecture.html">Architecture</a></li>
+                <li><a href="database.html">Database</a></li>
+                <li><a href="apis.html">Core APIs</a></li>
+                <li><a href="complaint.html">Complaint Flow</a></li>
+                <li><a href="form-generation.html">Form Generation</a></li>
+                <li><a href="student-report.html">Student Report</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="hero">
+            <h1>Transfinder Form Assistant Design</h1>
+            <p>An AI-powered system for generating forms, processing complaints, and creating student reports through natural language interaction</p>
+        </div>
+
+        <div class="section">
+            <h2>Project Overview</h2>
+            <p>The Transfinder Form Assistant is a comprehensive system that leverages AI to help users create forms, file complaints, and generate reports through conversational interfaces. The system integrates with Ground Control for essential AI interaction components.</p>
+            
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h4>🤖 AI-Powered Complaint Processing</h4>
+                    <p>Multi-step dialogue-driven complaint filing system that guides users through the complaint process using natural language conversation.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>📝 Dynamic Form Generation</h4>
+                    <p>Generate complete form JSON structures and HTML pages from simple natural language descriptions.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>📊 Student Report Generation</h4>
+                    <p>Create SQL queries and generate comprehensive student reports based on natural language requests.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Key Features</h2>
+            <ul>
+                <li><strong>Complaint Management:</strong> Multi-phase dialogue system for filing and processing complaints against students</li>
+                <li><strong>Form Builder:</strong> AI-generated form JSON and HTML pages with dark gray and orange theme</li>
+                <li><strong>Report Generator:</strong> SQL query generation and execution for student data reports</li>
+                <li><strong>Chat Interface:</strong> Natural language processing for all interactions</li>
+                <li><strong>Voice Support:</strong> Voice input and recognition capabilities</li>
+                <li><strong>State Management:</strong> Persistent session state using BadgerDB</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>System Architecture</h2>
+            <p>The system is built with a Go backend and React frontend, using:</p>
+            <ul>
+                <li><strong>Backend:</strong> Go (Gin framework) with BadgerDB for storage</li>
+                <li><strong>Frontend:</strong> React with modern chat interface</li>
+                <li><strong>AI Integration:</strong> Qwen3-Max model via DashScope API</li>
+                <li><strong>Database:</strong> BadgerDB (key-value store) + SQL Server for student data</li>
+                <li><strong>External Services:</strong> Ground Control API for dialogue-driven flows</li>
+            </ul>
+            <p><a href="architecture.html" style="color: var(--orange);">View detailed architecture →</a></p>
+        </div>
+
+        <div class="section">
+            <h2>Core Functionalities</h2>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h4>1. Complaint Flow</h4>
+                    <p>Complete multi-step process for filing complaints, including initialization, dialogue, and execution phases.</p>
+                    <p><a href="complaint.html" style="color: var(--orange);">Learn more →</a></p>
+                </div>
+                <div class="feature-card">
+                    <h4>2. Form Generation</h4>
+                    <p>Simple natural language to form JSON and HTML conversion with structured output.</p>
+                    <p><a href="form-generation.html" style="color: var(--orange);">Learn more →</a></p>
+                </div>
+                <div class="feature-card">
+                    <h4>3. Student Reports</h4>
+                    <p>Generate SQL queries and create formatted reports from student database.</p>
+                    <p><a href="student-report.html" style="color: var(--orange);">Learn more →</a></p>
+                </div>
+            </div>
+        </div>
+
+        <div class="highlight-box">
+            <p><strong>Note:</strong> The essential AI interaction parts, including dialogue management and flow configuration, are handled by the <strong>Ground Control</strong> project. This system integrates with Ground Control's API endpoints for complaint processing workflows.</p>
+        </div>
+    </div>
+
+    <footer>
+        <p>Transfinder Form Assistant Design - Presentation Site</p>
+    </footer>
+</body>
+</html>
+

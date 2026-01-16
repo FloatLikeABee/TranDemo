@@ -477,9 +477,8 @@ function App() {
     };
   }, [transcript, continuousVoiceMode, listening, loading, browserSupportsSpeechRecognition, micPermission, isSpeaking]);
 
-  const handleSend = async (e) => {
-    e.preventDefault();
-    if (!input.trim() || loading) return;
+  const sendMessage = async (messageText) => {
+    if (!messageText.trim() || loading) return;
 
     // Clear silence timer
     if (silenceTimerRef.current) {
@@ -492,7 +491,7 @@ function App() {
       SpeechRecognition.stopListening();
     }
 
-    const userMessage = input.trim();
+    const userMessage = messageText.trim();
     setInput('');
     resetTranscript();
     setMessages(prev => [...prev, { type: 'user', content: userMessage }]);
@@ -538,6 +537,18 @@ function App() {
         inputRef.current?.focus();
       }
     }
+  };
+
+  const handleSend = async (e) => {
+    e.preventDefault();
+    if (!input.trim() || loading) return;
+    await sendMessage(input);
+  };
+
+  const handleExampleClick = async (exampleText) => {
+    // Remove quotes from the example text
+    const textWithoutQuotes = exampleText.replace(/^"|"$/g, '');
+    await sendMessage(textWithoutQuotes);
   };
 
   const handleVoiceAttendance = async () => {
@@ -771,9 +782,15 @@ function App() {
               <h2>Welcome to Transfinder form assistant</h2>
               <p>Start by describing the form or report you need. For example:</p>
               <ul>
-                <li>"File a complaint against a student"</li>
-                <li>"Generate a monthly transportation report showing route statistics"</li>
-                <li>"Build a form to track student attendance by date and route"</li>
+                <li onClick={() => handleExampleClick('"File a complaint against a student"')}>
+                  "File a complaint against a student"
+                </li>
+                <li onClick={() => handleExampleClick('"Generate a monthly transportation report showing route statistics"')}>
+                  "Generate a monthly transportation report showing route statistics"
+                </li>
+                <li onClick={() => handleExampleClick('"Build a form to track student attendance by date and route"')}>
+                  "Build a form to track student attendance by date and route"
+                </li>
               </ul>
               <div className="voice-feature-notice">
                 <p><strong>🎙️ Voice Attendance Feature:</strong></p>

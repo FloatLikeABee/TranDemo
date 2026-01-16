@@ -12,8 +12,22 @@ func IsValidPrompt(prompt string) bool {
 	// Trim whitespace
 	trimmed := strings.TrimSpace(prompt)
 	
-	// Check minimum length (at least 3 characters)
-	if len(trimmed) < 3 {
+	// Check if it's all whitespace
+	if len(trimmed) == 0 {
+		return false
+	}
+	
+	// Check for common short words first (allow 2-character common words)
+	lower := strings.ToLower(trimmed)
+	commonShortWords := []string{"hi", "ok", "no", "yes", "go", "okay", "yeah", "yep", "nope", "hey", "yo"}
+	for _, word := range commonShortWords {
+		if lower == word {
+			return true // Common short words are always valid
+		}
+	}
+	
+	// Check minimum length (at least 2 characters, but prefer 3+)
+	if len(trimmed) < 2 {
 		return false
 	}
 	
@@ -22,19 +36,22 @@ func IsValidPrompt(prompt string) bool {
 		return false
 	}
 	
-	// Check if it's all whitespace
-	if len(trimmed) == 0 {
-		return false
-	}
-	
 	// Check for minimum word count (at least 2 words for a meaningful prompt)
 	words := strings.Fields(trimmed)
 	if len(words) < 2 {
 		// Single word might be valid if it's long enough and has meaning
-		if len(words) == 1 && len(words[0]) >= 3 {
-			// Check if it's not just repeated characters
-			if !isRepeatedCharacters(words[0]) {
-				return true
+		if len(words) == 1 {
+			word := words[0]
+			// Allow single words that are at least 2 characters and not repeated
+			if len(word) >= 2 && !isRepeatedCharacters(word) {
+				// Check if it's a common word
+				if hasCommonWords(trimmed) {
+					return true
+				}
+				// Allow if it's at least 3 characters (for less common but valid words)
+				if len(word) >= 3 {
+					return true
+				}
 			}
 		}
 		return false
@@ -305,16 +322,20 @@ func hasExcessivePunctuation(s string) bool {
 func hasCommonWords(s string) bool {
 	lower := strings.ToLower(s)
 	
-	// Common English words that indicate meaningful text
+	// Common English words that indicate meaningful text (including short words)
 	commonWords := []string{
-		"the", "is", "are", "was", "were", "be", "been", "have", "has", "had",
-		"do", "does", "did", "will", "would", "could", "should", "may", "might",
+		// Short words (2 chars)
+		"hi", "ok", "no", "go", "to", "of", "in", "on", "at", "by", "if", "is", "it", "we", "he", "or", "so", "up", "my", "me", "do", "be", "as", "an", "am", "id",
+		// Common 3+ char words
+		"the", "are", "was", "were", "been", "have", "has", "had",
+		"does", "did", "will", "would", "could", "should", "may", "might",
 		"can", "this", "that", "these", "those", "what", "which", "who", "when",
-		"where", "why", "how", "i", "you", "he", "she", "it", "we", "they",
-		"and", "or", "but", "if", "then", "because", "so", "with", "from",
-		"for", "to", "of", "in", "on", "at", "by", "about", "into", "through",
-		"want", "need", "get", "make", "give", "take", "go", "come", "see",
+		"where", "why", "how", "you", "she", "they",
+		"and", "but", "then", "because", "with", "from",
+		"for", "about", "into", "through",
+		"want", "need", "get", "make", "give", "take", "come", "see",
 		"know", "think", "say", "tell", "ask", "help", "show", "find", "use",
+		"yes", "okay", "yeah", "yep", "nope", "hey", "yo",
 	}
 	
 	for _, word := range commonWords {

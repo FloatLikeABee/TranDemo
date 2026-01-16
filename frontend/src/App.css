@@ -133,8 +133,18 @@
   background: #2a2a2a;
   border-radius: 8px;
   border-left: 3px solid #FF8C00;
+  border: 1px solid #FF8C00;
   font-size: 14px;
   color: #e0e0e0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.welcome-message li:hover {
+  background: #3a3a3a;
+  border-color: #FFB84D;
+  transform: translateX(5px);
+  box-shadow: 0 2px 8px rgba(255, 140, 0, 0.3);
 }
 
 .voice-feature-notice {

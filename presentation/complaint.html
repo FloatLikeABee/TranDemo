@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Complaint Flow - Transfinder Form Assistant Design</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <a href="index.html" class="logo">Transfinder Form Assistant Design</a>
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="architecture.html">Architecture</a></li>
+                <li><a href="database.html">Database</a></li>
+                <li><a href="apis.html">Core APIs</a></li>
+                <li><a href="complaint.html">Complaint Flow</a></li>
+                <li><a href="form-generation.html">Form Generation</a></li>
+                <li><a href="student-report.html">Student Report</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="hero">
+            <h1>Complaint Flow</h1>
+            <p>Multi-step dialogue-driven complaint filing system</p>
+        </div>
+
+        <div class="section">
+            <h2>Overview</h2>
+            <p>The complaint flow is a sophisticated multi-phase system that guides users through filing complaints against students. The system uses a dialogue-driven approach powered by the <strong>Ground Control</strong> project for essential AI interactions.</p>
+            
+            <div class="highlight-box">
+                <p><strong>Important:</strong> The essential AI interaction parts, including dialogue management, system prompts, and flow configuration, are handled by the <strong>Ground Control</strong> project. This system integrates with Ground Control's API endpoints.</p>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Ground Control Flow Configuration</h2>
+            <p>The complaint flow is configured in Ground Control as "chaintest1" with the following structure:</p>
+            
+            <div class="image-container">
+                <img src="ground.png" alt="Ground Control Flow Configuration" style="max-width: 100%; border: 1px solid var(--light-gray);">
+                <p class="caption">Ground Control Flow Configuration Interface</p>
+            </div>
+
+            <h3>Flow Configuration Details</h3>
+            <ul>
+                <li><strong>Flow Name:</strong> chaintest1</li>
+                <li><strong>Description:</strong> testing the whole chain</li>
+                <li><strong>Active:</strong> Yes</li>
+                <li><strong>System Prompt:</strong> Defines the dialogue outcome (conversation_history) that will be cached for the session</li>
+                <li><strong>Max Turns Phase 1:</strong> 20</li>
+                <li><strong>Use Initial Data in Dialogue:</strong> Yes</li>
+                <li><strong>LLM Provider:</strong> Qwen</li>
+                <li><strong>Model Name:</strong> qwen3-max</li>
+            </ul>
+
+            <p>The system prompt defines the dialogue outcome that will be cached for the session. Step 3 uses this outcome to extract parameters, and step 4 uses the cached conversation for final processing.</p>
+        </div>
+
+        <div class="section">
+            <h2>Complaint Flow Process</h2>
+            
+            <div class="flow-diagram">
+                <div class="flow-step">
+                    <h4>Step 1: Initialize Process</h4>
+                    <p><strong>API Call:</strong> <code>POST /special-flows-1/chaintest1/execute</code></p>
+                    <p><strong>Request:</strong></p>
+                    <div class="code-block">
+                        <pre>{
+  "initial_input": "",
+  "context": {}
+}</pre>
+                    </div>
+                    <p><strong>Response:</strong> Returns <code>initial_data</code> which is stored for later use</p>
+                    <p><strong>Purpose:</strong> Initialize the flow and get initial configuration data</p>
+                </div>
+
+                <div class="flow-step">
+                    <h4>Step 2: Start Dialogue</h4>
+                    <p><strong>API Call:</strong> <code>POST /dialogues/flow_chaintest1_dialogue/start</code></p>
+                    <p><strong>Request:</strong></p>
+                    <div class="code-block">
+                        <pre>{
+  "initial_message": "User's complaint message",
+  "n_results": 3
+}</pre>
+                    </div>
+                    <p><strong>Response:</strong></p>
+                    <div class="code-block">
+                        <pre>{
+  "conversation_id": "unique-id",
+  "response": "AI response asking for more details"
+}</pre>
+                    </div>
+                    <p><strong>Purpose:</strong> Begin the dialogue session with Ground Control. The conversation_id is stored in BadgerDB for session management.</p>
+                </div>
+
+                <div class="flow-step">
+                    <h4>Step 3: Continue Dialogue (Multiple Exchanges)</h4>
+                    <p><strong>API Call:</strong> <code>POST /dialogues/flow_chaintest1_dialogue/continue</code></p>
+                    <p><strong>Request:</strong></p>
+                    <div class="code-block">
+                        <pre>{
+  "conversation_id": "from-step-2",
+  "user_message": "User's response"
+}</pre>
+                    </div>
+                    <p><strong>Response:</strong></p>
+                    <div class="code-block">
+                        <pre>{
+  "conversation_id": "same-id",
+  "response": "AI response",
+  "is_complete": false,
+  "needs_more_info": true,
+  "turn_number": 2,
+  "max_turns": 20,
+  "conversation_history": [ ... ]
+}</pre>
+                    </div>
+                    <p><strong>Purpose:</strong> Continue the conversation until all required information is collected. This step repeats until <code>is_complete</code> is true.</p>
+                    <p><strong>State Management:</strong> Each exchange increments <code>exchange_count</code> in ComplaintState. Maximum 12 exchanges before starting a new session.</p>
+                </div>
+
+                <div class="flow-step">
+                    <h4>Step 4: Execute Final Step</h4>
+                    <p><strong>API Call:</strong> <code>POST /special-flows-1/chaintest1/execute</code></p>
+                    <p><strong>Request:</strong></p>
+                    <div class="code-block">
+                        <pre>{
+  "resume_from_phase": "dialogue",
+  "dialogue_phase1_result": {
+    // Full response from continue dialogue
+    "conversation_id": "...",
+    "response": "...",
+    "is_complete": true,
+    "conversation_history": [ ... ],
+    ...
+  },
+  "initial_data": {
+    // From step 1
+    ...
+  }
+}</pre>
+                    </div>
+                    <p><strong>Response:</strong></p>
+                    <div class="code-block">
+                        <pre>{
+  "final_outcome": {
+    // Processed complaint data
+    ...
+  }
+}</pre>
+                    </div>
+                    <p><strong>Purpose:</strong> Execute the final processing step using the completed dialogue result and initial data. Returns the final outcome.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Core APIs Called</h2>
+            <p>The complaint flow makes the following API calls to Ground Control:</p>
+
+            <h3>1. Initialize API</h3>
+            <div class="api-card">
+                <span class="method">POST</span>
+                <span class="endpoint">http://192.168.9.136:8000/special-flows-1/chaintest1/execute</span>
+                <div class="description">
+                    <p><strong>Called by:</strong> <code>ComplaintService.InitializeProcess()</code></p>
+                    <p><strong>When:</strong> At the start of a new complaint session</p>
+                    <p><strong>Returns:</strong> <code>initial_data</code> which is stored in ComplaintState</p>
+                </div>
+            </div>
+
+            <h3>2. Start Dialogue API</h3>
+            <div class="api-card">
+                <span class="method">POST</span>
+                <span class="endpoint">http://192.168.9.136:8000/dialogues/flow_chaintest1_dialogue/start</span>
+                <div class="description">
+                    <p><strong>Called by:</strong> <code>ComplaintService.StartDialogue()</code></p>
+                    <p><strong>When:</strong> After initialization, with the user's initial complaint message</p>
+                    <p><strong>Returns:</strong> <code>conversation_id</code> and initial AI response</p>
+                    <p><strong>Critical:</strong> The conversation_id is stored in BadgerDB for session continuity</p>
+                </div>
+            </div>
+
+            <h3>3. Continue Dialogue API</h3>
+            <div class="api-card">
+                <span class="method">POST</span>
+                <span class="endpoint">http://192.168.9.136:8000/dialogues/flow_chaintest1_dialogue/continue</span>
+                <div class="description">
+                    <p><strong>Called by:</strong> <code>ComplaintService.ContinueDialogue()</code></p>
+                    <p><strong>When:</strong> For each subsequent user message in the conversation</p>
+                    <p><strong>Returns:</strong> AI response, conversation state, and completion status</p>
+                    <p><strong>Loop:</strong> Continues until <code>is_complete</code> is true</p>
+                </div>
+            </div>
+
+            <h3>4. Execute API (Final Step)</h3>
+            <div class="api-card">
+                <span class="method">POST</span>
+                <span class="endpoint">http://192.168.9.136:8000/special-flows-1/chaintest1/execute</span>
+                <div class="description">
+                    <p><strong>Called by:</strong> <code>ComplaintService.ExecuteWithResponseBody()</code></p>
+                    <p><strong>When:</strong> After dialogue is complete (<code>is_complete: true</code>)</p>
+                    <p><strong>Request Body:</strong> Includes <code>dialogue_phase1_result</code> (full continue response) and <code>initial_data</code> (from step 1)</p>
+                    <p><strong>Returns:</strong> <code>final_outcome</code> with processed complaint data</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>State Management</h2>
+            <p>The system maintains complaint state in BadgerDB using the <code>ComplaintState</code> model:</p>
+            
+            <div class="code-block">
+                <pre>Key: complaint:{userID}:{conversationID}
+
+Value: {
+  "conversation_id": "from-ground-control",
+  "step": "dialogue",
+  "exchange_count": 3,
+  "initial_data": { ... },
+  "last_response": "AI response text"
+}</pre>
+            </div>
+
+            <h3>State Transitions</h3>
+            <ul>
+                <li><strong>New Session:</strong> Step 1 & 2 executed, state created with <code>step: "dialogue"</code></li>
+                <li><strong>Active Session:</strong> Step 3 executed multiple times, <code>exchange_count</code> increments</li>
+                <li><strong>Complete:</strong> Step 4 executed, <code>step: "complete"</code></li>
+            </ul>
+
+            <h3>Session Continuity</h3>
+            <p>The system checks for active complaint sessions on each chat request:</p>
+            <ul>
+                <li>If active session exists (conversation_id present, step != "complete"), continue the dialogue</li>
+                <li>If no session or session complete, start a new complaint flow</li>
+                <li>Maximum 12 exchanges per session before auto-reset</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>Request Detection</h2>
+            <p>The system automatically detects complaint requests using keyword matching:</p>
+            
+            <div class="code-block">
+                <pre>Keywords: "file a complaint", "complaint against", 
+         "report a student", "misconduct", "behavior report", etc.</pre>
+            </div>
+
+            <p>When detected, the request is routed to <code>handleComplaintFlow()</code> instead of general chat or SQL generation.</p>
+        </div>
+
+        <div class="section">
+            <h2>Error Handling</h2>
+            <ul>
+                <li><strong>Missing conversation_id:</strong> Session cannot continue, new session started</li>
+                <li><strong>Max turns reached:</strong> Ground Control returns error, new session started</li>
+                <li><strong>API errors:</strong> Error messages returned to user, state preserved for retry</li>
+            </ul>
+        </div>
+    </div>
+
+    <footer>
+        <p>Transfinder Form Assistant Design - Complaint Flow Documentation</p>
+    </footer>
+</body>
+</html>
+

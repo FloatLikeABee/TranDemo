@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Design - Transfinder Form Assistant Design</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <a href="index.html" class="logo">Transfinder Form Assistant Design</a>
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="architecture.html">Architecture</a></li>
+                <li><a href="database.html">Database</a></li>
+                <li><a href="apis.html">Core APIs</a></li>
+                <li><a href="complaint.html">Complaint Flow</a></li>
+                <li><a href="form-generation.html">Form Generation</a></li>
+                <li><a href="student-report.html">Student Report</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="hero">
+            <h1>Database Design</h1>
+            <p>Data storage architecture and schema definitions</p>
+        </div>
+
+        <div class="section">
+            <h2>Storage Architecture</h2>
+            <p>The system uses a dual-database approach:</p>
+            <ul>
+                <li><strong>BadgerDB:</strong> Embedded key-value store for application data (chat history, complaint state, SQL files, voice profiles)</li>
+                <li><strong>SQL Server:</strong> External relational database for student data and reports</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>BadgerDB Schema</h2>
+            <p>BadgerDB uses a key-value storage model with prefixed keys for different data types:</p>
+            
+            <h3>Key Patterns</h3>
+            <table class="schema-table">
+                <thead>
+                    <tr>
+                        <th>Key Pattern</th>
+                        <th>Data Type</th>
+                        <th>Value Structure</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>chat:{userID}:{timestamp}</code></td>
+                        <td>ChatHistory</td>
+                        <td>JSON</td>
+                        <td>Stores chat conversation history</td>
+                    </tr>
+                    <tr>
+                        <td><code>complaint:{userID}:{conversationID}</code></td>
+                        <td>ComplaintState</td>
+                        <td>JSON</td>
+                        <td>Stores complaint flow state and session data</td>
+                    </tr>
+                    <tr>
+                        <td><code>sql_file:{filename}</code></td>
+                        <td>SQLFile</td>
+                        <td>String</td>
+                        <td>Stores reference SQL file content</td>
+                    </tr>
+                    <tr>
+                        <td><code>voice_profile:{userID}</code></td>
+                        <td>VoiceProfile</td>
+                        <td>JSON</td>
+                        <td>Stores voice recognition profiles</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="section">
+            <h2>Data Models</h2>
+            
+            <h3>ChatHistory</h3>
+            <div class="code-block">
+                <pre>
+type ChatHistory struct {
+    Message   string `json:"message"`
+    Response  string `json:"response"`
+    Timestamp string `json:"timestamp"`
+}
+                </pre>
+            </div>
+            <p><strong>Usage:</strong> Stores all user messages and AI responses for conversation history tracking.</p>
+
+            <h3>ComplaintState</h3>
+            <div class="code-block">
+                <pre>
+type ComplaintState struct {
+    ConversationID string                 `json:"conversation_id"`
+    Step           string                 `json:"step"`
+    ComplaintText  string                 `json:"complaint_text,omitempty"`
+    DialogueResult map[string]interface{} `json:"dialogue_result,omitempty"`
+    InitialData    map[string]interface{} `json:"initial_data,omitempty"`
+    ExchangeCount  int                    `json:"exchange_count"`
+    LastResponse   string                 `json:"last_response,omitempty"`
+}
+                </pre>
+            </div>
+            <p><strong>Usage:</strong> Maintains state for active complaint sessions, including conversation ID, step progression, and dialogue results.</p>
+            <p><strong>Step Values:</strong></p>
+            <ul>
+                <li><code>"start"</code> - Initial state</li>
+                <li><code>"dialogue"</code> - Active conversation</li>
+                <li><code>"waiting_complaint"</code> - Waiting for complaint details</li>
+                <li><code>"executing"</code> - Processing final execution</li>
+                <li><code>"complete"</code> - Session completed</li>
+            </ul>
+
+            <h3>SQLFile</h3>
+            <div class="code-block">
+                <pre>
+type SQLFile struct {
+    Name    string `json:"name"`
+    Content string `json:"content"`
+}
+                </pre>
+            </div>
+            <p><strong>Usage:</strong> Reference SQL files used as context for AI SQL generation.</p>
+
+            <h3>VoiceProfile</h3>
+            <div class="code-block">
+                <pre>
+type VoiceProfile struct {
+    UserID      string   `json:"user_id"`
+    Name        string   `json:"name"`
+    VoiceSamples []string `json:"voice_samples"`
+    CreatedAt   string   `json:"created_at"`
+    UpdatedAt   string   `json:"updated_at"`
+}
+                </pre>
+            </div>
+            <p><strong>Usage:</strong> Stores voice samples for user recognition and attendance features.</p>
+        </div>
+
+        <div class="section">
+            <h2>SQL Server Database</h2>
+            <p>The system connects to an external SQL Server database for student data:</p>
+            
+            <h3>Connection Configuration</h3>
+            <div class="code-block">
+                <pre>
+Server:   192.168.9.9
+Port:     1433
+Database: team2_ent
+User:     tfuser
+Encrypt:  true
+                </pre>
+            </div>
+
+            <h3>Key Tables (Referenced in Reports)</h3>
+            <ul>
+                <li><strong>Student:</strong> Core student information</li>
+                <li><strong>RecordContact:</strong> Student contact information</li>
+                <li><strong>Contact:</strong> Contact details</li>
+                <li><strong>DocumentRelationship:</strong> Document attachments</li>
+                <li><strong>Document:</strong> Document metadata</li>
+                <li><strong>Ethnic_Codes:</strong> Ethnicity codes</li>
+                <li><strong>OwnedEthnicCodes:</strong> Student ethnicity associations</li>
+                <li><strong>Disability_Codes:</strong> Disability codes</li>
+                <li><strong>OwnedDisability:</strong> Student disability associations</li>
+                <li><strong>Grade:</strong> Grade level information</li>
+                <li><strong>DistrictStudentPolicy:</strong> District policies</li>
+            </ul>
+
+            <h3>Common SQL Patterns</h3>
+            <p>Student reports typically use a CTE (Common Table Expression) structure:</p>
+            <div class="code-block">
+                <pre>
+WITH CTE_GRID_DOCUMENT AS (...),
+     PrimaryContact AS (...),
+     EthnicCodes AS (...),
+     DisabilityCodes AS (...),
+     ...
+SELECT ... FROM Student s
+LEFT JOIN PrimaryContact pc ON ...
+LEFT JOIN EthnicCodes ec ON ...
+...
+                </pre>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Data Flow</h2>
+            
+            <h3>Read Operations</h3>
+            <div class="flow-diagram">
+                <div class="flow-step">
+                    <h4>1. Key Lookup</h4>
+                    <p>BadgerDB transaction opens with key prefix</p>
+                </div>
+                <div class="flow-step">
+                    <h4>2. Value Retrieval</h4>
+                    <p>JSON value deserialized into Go struct</p>
+                </div>
+                <div class="flow-step">
+                    <h4>3. Return Data</h4>
+                    <p>Structured data returned to handler</p>
+                </div>
+            </div>
+
+            <h3>Write Operations</h3>
+            <div class="flow-diagram">
+                <div class="flow-step">
+                    <h4>1. Data Serialization</h4>
+                    <p>Go struct marshaled to JSON</p>
+                </div>
+                <div class="flow-step">
+                    <h4>2. Key Generation</h4>
+                    <p>Key constructed with appropriate prefix</p>
+                </div>
+                <div class="flow-step">
+                    <h4>3. Transaction Write</h4>
+                    <p>BadgerDB update transaction commits</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>File Storage</h2>
+            <p>Additional data stored in file system:</p>
+            <ul>
+                <li><strong>sql_files/</strong> - Reference SQL files (also stored in BadgerDB)</li>
+                <li><strong>results/</strong> - Generated SQL query results (JSON format)</li>
+                <li><strong>products/</strong> - Generated HTML pages (forms and reports)</li>
+                <li><strong>voice_samples/</strong> - Voice audio samples for recognition</li>
+            </ul>
+        </div>
+    </div>
+
+    <footer>
+        <p>Transfinder Form Assistant Design - Database Documentation</p>
+    </footer>
+</body>
+</html>
+

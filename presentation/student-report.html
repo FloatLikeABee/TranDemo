@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Report - Transfinder Form Assistant Design</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <a href="index.html" class="logo">Transfinder Form Assistant Design</a>
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="architecture.html">Architecture</a></li>
+                <li><a href="database.html">Database</a></li>
+                <li><a href="apis.html">Core APIs</a></li>
+                <li><a href="complaint.html">Complaint Flow</a></li>
+                <li><a href="form-generation.html">Form Generation</a></li>
+                <li><a href="student-report.html">Student Report</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="hero">
+            <h1>Student Report Generation</h1>
+            <p>AI-powered SQL generation and report creation from natural language</p>
+        </div>
+
+        <div class="section">
+            <h2>Overview</h2>
+            <p>The student report feature allows users to generate SQL queries and create comprehensive reports by describing their requirements in natural language. The system uses AI to generate SQL based on reference files and executes queries against the SQL Server database.</p>
+        </div>
+
+        <div class="section">
+            <h2>How It Works</h2>
+            
+            <div class="flow-diagram">
+                <div class="flow-step">
+                    <h4>Step 1: Request Detection</h4>
+                    <p>The system detects report generation requests using keyword matching:</p>
+                    <div class="code-block">
+                        <pre>Keywords: "generate report", "create report", 
+         "i want a report", "i need a report",
+         "make a report", "generate a report"</pre>
+                    </div>
+                    <p>If keywords are not present, the request is treated as general chat.</p>
+                </div>
+
+                <div class="flow-step">
+                    <h4>Step 2: Load Reference SQL Files</h4>
+                    <p><strong>Source:</strong> BadgerDB or <code>sql_files/</code> directory</p>
+                    <p><strong>Purpose:</strong> Provide context to AI for SQL generation</p>
+                    <p>Reference files contain example SQL queries that demonstrate the database structure and common patterns.</p>
+                </div>
+
+                <div class="flow-step">
+                    <h4>Step 3: SQL Generation</h4>
+                    <p><strong>Service:</strong> <code>AIService.GenerateSQL()</code></p>
+                    <p><strong>Process:</strong></p>
+                    <ul>
+                        <li>Builds context from reference SQL files</li>
+                        <li>Creates prompt with user request and SQL examples</li>
+                        <li>Calls DashScope API (Qwen3-Max) to generate SQL query</li>
+                        <li>AI generates SQL following patterns from reference files</li>
+                    </ul>
+                    <p><strong>Output:</strong> SQL query string</p>
+                </div>
+
+                <div class="flow-step">
+                    <h4>Step 4: SQL Preprocessing</h4>
+                    <p>If the generated SQL doesn't start with "WITH", the system prepends the standard CTE header:</p>
+                    <div class="code-block">
+                        <pre>WITH CTE_GRID_DOCUMENT AS (...),
+     PrimaryContact AS (...),
+     EthnicCodes AS (...),
+     DisabilityCodes AS (...),
+     ...
+[Generated SQL]</pre>
+                    </div>
+                    <p>This ensures all student reports have the necessary common table expressions.</p>
+                </div>
+
+                <div class="flow-step">
+                    <h4>Step 5: SQL Execution (Background)</h4>
+                    <p><strong>Service:</strong> <code>SQLService.ExecuteQueryWithSave()</code></p>
+                    <p><strong>Process:</strong></p>
+                    <ul>
+                        <li>Connects to SQL Server (192.168.9.9:1433)</li>
+                        <li>Executes the generated SQL query</li>
+                        <li>Saves results as JSON file in <code>results/</code> directory</li>
+                        <li>Filename format: <code>result_YYYYMMDD_HHMMSS_timestamp.json</code></li>
+                    </ul>
+                    <p><strong>Note:</strong> Execution happens in background goroutine, doesn't block response</p>
+                </div>
+
+                <div class="flow-step">
+                    <h4>Step 6: HTML Page Generation (Background)</h4>
+                    <p><strong>Service:</strong> <code>AIService.GenerateHTMLPage()</code></p>
+                    <p><strong>Process:</strong></p>
+                    <ul>
+                        <li>Loads the saved result file</li>
+                        <li>Generates HTML page with dark gray and orange theme</li>
+                        <li>Creates formatted table with query results</li>
+                        <li>Saves HTML to <code>products/</code> directory</li>
+                    </ul>
+                    <p><strong>Output:</strong> Complete HTML report page</p>
+                </div>
+
+                <div class="flow-step">
+                    <h4>Step 7: Return to User</h4>
+                    <p><strong>Response:</strong> SQL query returned immediately to user</p>
+                    <p><strong>Background:</strong> Result file and HTML page generated asynchronously</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>SQL Template Structure</h2>
+            <p>Student reports typically use a CTE (Common Table Expression) structure:</p>
+            
+            <div class="code-block">
+                <pre>WITH CTE_GRID_DOCUMENT AS (
+    SELECT dr.DBID, dr.AttachedToID, dr.DocumentID, dr.AttachedToType 
+    FROM DocumentRelationship dr 
+    JOIN Document d ON ...
+), 
+PrimaryContact AS (
+    SELECT rc.RecordID, rc.[DBID],
+           CASE WHEN c.LastName IS NULL ... END AS [PrimaryContactName],
+           ...
+    FROM RecordContact rc 
+    INNER JOIN CONTACT C ON ...
+    WHERE rc.IsPrimary = 1
+), 
+EthnicCodes AS (
+    SELECT oec.stud_id, ec.[dbid],
+           STRING_AGG(CAST(ec.Code AS VARCHAR(MAX)), ', ') AS names 
+    FROM dbo.Ethnic_Codes ec 
+    INNER JOIN dbo.OwnedEthnicCodes oec ON ...
+    GROUP BY ec.[dbid], oec.stud_id
+),
+DisabilityCodes AS (...),
+sfc AS (...),
+drs AS (...),
+CTE_districtstudentpolicy AS (...)
+SELECT ... FROM Student s
+LEFT JOIN PrimaryContact pc ON ...
+LEFT JOIN EthnicCodes ec ON ...
+...</pre>
+            </div>
+
+            <h3>Common CTEs</h3>
+            <ul>
+                <li><strong>CTE_GRID_DOCUMENT:</strong> Document relationships</li>
+                <li><strong>PrimaryContact:</strong> Primary contact information</li>
+                <li><strong>EthnicCodes:</strong> Aggregated ethnicity codes</li>
+                <li><strong>DisabilityCodes:</strong> Aggregated disability codes</li>
+                <li><strong>sfc:</strong> Stopfinder contacts count</li>
+                <li><strong>drs:</strong> Document counts</li>
+                <li><strong>CTE_districtstudentpolicy:</strong> District policy data</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>Database Connection</h2>
+            <p>The system connects to SQL Server for query execution:</p>
+            
+            <div class="code-block">
+                <pre>Server:   192.168.9.9
+Port:     1433
+Database: team2_ent
+User:     tfuser
+Encrypt:  true</pre>
+            </div>
+
+            <h3>Key Tables</h3>
+            <ul>
+                <li><strong>Student:</strong> Core student records</li>
+                <li><strong>RecordContact:</strong> Student-contact relationships</li>
+                <li><strong>Contact:</strong> Contact details</li>
+                <li><strong>DocumentRelationship:</strong> Document attachments</li>
+                <li><strong>Ethnic_Codes / OwnedEthnicCodes:</strong> Ethnicity data</li>
+                <li><strong>Disability_Codes / OwnedDisability:</strong> Disability data</li>
+                <li><strong>Grade:</strong> Grade level information</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>Example Usage</h2>
+            
+            <h3>User Request</h3>
+            <div class="code-block">
+                <pre>"Generate a report showing all students with their primary contact 
+information and ethnicity codes"</pre>
+            </div>
+
+            <h3>Generated SQL (Excerpt)</h3>
+            <div class="code-block">
+                <pre>WITH CTE_GRID_DOCUMENT AS (...),
+     PrimaryContact AS (...),
+     EthnicCodes AS (...)
+SELECT 
+    s.StudentID,
+    s.FirstName,
+    s.LastName,
+    pc.PrimaryContactName,
+    pc.PrimaryContactPhone,
+    ec.names AS EthnicityCodes
+FROM Student s
+LEFT JOIN PrimaryContact pc ON s.RecordID = pc.RecordID
+LEFT JOIN EthnicCodes ec ON s.StudentID = ec.stud_id
+ORDER BY s.LastName, s.FirstName</pre>
+            </div>
+
+            <h3>Result File Structure</h3>
+            <div class="code-block">
+                <pre>{
+  "filename": "result_20260108_195251_1767919971126394000.json",
+  "query": "SELECT ...",
+  "timestamp": "2026-01-08T19:52:51Z",
+  "columns": ["StudentID", "FirstName", "LastName", ...],
+  "rows": [
+    ["12345", "John", "Doe", "Jane Doe", "555-1234", "Hispanic, White"],
+    ...
+  ],
+  "row_count": 150
+}</pre>
+            </div>
+
+            <h3>Generated HTML Report</h3>
+            <p>The HTML page includes:</p>
+            <ul>
+                <li>Dark gray background with orange accents</li>
+                <li>Report title and timestamp</li>
+                <li>Formatted data table</li>
+                <li>Row count and summary information</li>
+                <li>Professional styling matching the form theme</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>API Integration</h2>
+            <p>Report generation is handled through the main chat endpoint:</p>
+            
+            <div class="api-card">
+                <span class="method">POST</span>
+                <span class="endpoint">/api/chat</span>
+                <div class="description">
+                    <p><strong>Request Body:</strong></p>
+                    <div class="code-block">
+                        <pre>{
+  "message": "Generate a report showing..."
+}</pre>
+                    </div>
+                    <p><strong>Response:</strong></p>
+                    <div class="code-block">
+                        <pre>{
+  "response": "Here's the SQL query based on your request:\n\nSELECT ...",
+  "sql": "SELECT ..."
+}</pre>
+                    </div>
+                    <p><strong>Background:</strong> Result file and HTML page generated asynchronously</p>
+                </div>
+            </div>
+
+            <h3>Result File Access</h3>
+            <div class="api-card">
+                <span class="method">GET</span>
+                <span class="endpoint">/api/results</span>
+                <div class="description">
+                    <p>List all generated result files</p>
+                </div>
+            </div>
+
+            <div class="api-card">
+                <span class="method">GET</span>
+                <span class="endpoint">/api/results/:filename</span>
+                <div class="description">
+                    <p>Retrieve specific result file with columns and rows</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Error Handling</h2>
+            <ul>
+                <li><strong>SQL Generation Errors:</strong> Error message returned to user</li>
+                <li><strong>SQL Execution Errors:</strong> Logged, error message in result file</li>
+                <li><strong>Connection Errors:</strong> Error returned if SQL Server unavailable</li>
+                <li><strong>Empty Results:</strong> Valid response with empty rows array</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>Performance Considerations</h2>
+            <ul>
+                <li><strong>Background Processing:</strong> SQL execution and HTML generation don't block user response</li>
+                <li><strong>Async Operations:</strong> Results available after initial response</li>
+                <li><strong>File Storage:</strong> Results saved for later retrieval</li>
+                <li><strong>Large Queries:</strong> Handled gracefully with proper timeout settings</li>
+            </ul>
+        </div>
+    </div>
+
+    <footer>
+        <p>Transfinder Form Assistant Design - Student Report Documentation</p>
+    </footer>
+</body>
+</html>
+

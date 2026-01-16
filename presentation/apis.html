@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Core APIs - Transfinder Form Assistant Design</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <a href="index.html" class="logo">Transfinder Form Assistant Design</a>
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="architecture.html">Architecture</a></li>
+                <li><a href="database.html">Database</a></li>
+                <li><a href="apis.html">Core APIs</a></li>
+                <li><a href="complaint.html">Complaint Flow</a></li>
+                <li><a href="form-generation.html">Form Generation</a></li>
+                <li><a href="student-report.html">Student Report</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="hero">
+            <h1>Core APIs</h1>
+            <p>REST API endpoints and external service integrations</p>
+        </div>
+
+        <div class="section">
+            <h2>Internal API Endpoints</h2>
+            <p>All endpoints are prefixed with <code>/api/</code> and run on port 9090 by default.</p>
+
+            <div class="api-card">
+                <span class="method">POST</span>
+                <span class="endpoint">/api/chat</span>
+                <div class="description">
+                    <p><strong>Purpose:</strong> Main chat endpoint for all user interactions</p>
+                    <p><strong>Request Body:</strong></p>
+                    <div class="code-block">
+                        <pre>{
+  "message": "string",
+  "audio_data": "string (base64, optional)",
+  "audio_format": "string (optional)"
+}</pre>
+                    </div>
+                    <p><strong>Response:</strong></p>
+                    <div class="code-block">
+                        <pre>{
+  "response": "string",
+  "sql": "string (optional)",
+  "form_json": "string (optional)"
+}</pre>
+                    </div>
+                    <p><strong>Behavior:</strong> Routes requests to appropriate handlers (complaint, form generation, SQL generation, or general chat)</p>
+                </div>
+            </div>
+
+            <div class="api-card">
+                <span class="method">GET</span>
+                <span class="endpoint">/api/sql/files</span>
+                <div class="description">
+                    <p><strong>Purpose:</strong> Retrieve all reference SQL files</p>
+                    <p><strong>Response:</strong> Array of SQLFile objects</p>
+                </div>
+            </div>
+
+            <div class="api-card">
+                <span class="method">POST</span>
+                <span class="endpoint">/api/sql/upload</span>
+                <div class="description">
+                    <p><strong>Purpose:</strong> Upload a new SQL reference file</p>
+                    <p><strong>Request:</strong> Multipart form with file</p>
+                </div>
+            </div>
+
+            <div class="api-card">
+                <span class="method">GET</span>
+                <span class="endpoint">/api/results</span>
+                <div class="description">
+                    <p><strong>Purpose:</strong> List all generated result files</p>
+                    <p><strong>Response:</strong> Array of ResultFileInfo objects</p>
+                </div>
+            </div>
+
+            <div class="api-card">
+                <span class="method">GET</span>
+                <span class="endpoint">/api/results/:filename</span>
+                <div class="description">
+                    <p><strong>Purpose:</strong> Retrieve a specific result file</p>
+                    <p><strong>Response:</strong> ResultFile object with columns and rows</p>
+                </div>
+            </div>
+
+            <div class="api-card">
+                <span class="method">POST</span>
+                <span class="endpoint">/api/voice/register</span>
+                <div class="description">
+                    <p><strong>Purpose:</strong> Register a voice profile for attendance</p>
+                    <p><strong>Request Body:</strong></p>
+                    <div class="code-block">
+                        <pre>{
+  "name": "string",
+  "audio_data": "string (base64)",
+  "audio_format": "string"
+}</pre>
+                    </div>
+                </div>
+            </div>
+
+            <div class="api-card">
+                <span class="method">POST</span>
+                <span class="endpoint">/api/voice/recognize</span>
+                <div class="description">
+                    <p><strong>Purpose:</strong> Recognize voice for attendance</p>
+                    <p><strong>Request Body:</strong></p>
+                    <div class="code-block">
+                        <pre>{
+  "audio_data": "string (base64)",
+  "audio_format": "string"
+}</pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Ground Control API Integration</h2>
+            <p>The system integrates with Ground Control API for complaint processing. The essential AI interaction parts are handled by the <strong>Ground Control</strong> project.</p>
+
+            <div class="highlight-box">
+                <p><strong>Base URL:</strong> <code>http://192.168.9.136:8000</code></p>
+                <p><strong>Note:</strong> All dialogue management, flow configuration, and AI interactions for complaints are managed by Ground Control.</p>
+            </div>
+
+            <h3>Complaint Flow Endpoints</h3>
+
+            <div class="api-card">
+                <span class="method">POST</span>
+                <span class="endpoint">/special-flows-1/chaintest1/execute</span>
+                <div class="description">
+                    <p><strong>Purpose:</strong> Initialize complaint flow or execute final step</p>
+                    <p><strong>Request Body (Initialize):</strong></p>
+                    <div class="code-block">
+                        <pre>{
+  "initial_input": "",
+  "context": {}
+}</pre>
+                    </div>
+                    <p><strong>Request Body (Execute):</strong></p>
+                    <div class="code-block">
+                        <pre>{
+  "resume_from_phase": "dialogue",
+  "dialogue_phase1_result": { ... },
+  "initial_data": { ... }
+}</pre>
+                    </div>
+                    <p><strong>Response:</strong> Contains <code>initial_data</code> (on init) or <code>final_outcome</code> (on execute)</p>
+                </div>
+            </div>
+
+            <div class="api-card">
+                <span class="method">POST</span>
+                <span class="endpoint">/dialogues/flow_chaintest1_dialogue/start</span>
+                <div class="description">
+                    <p><strong>Purpose:</strong> Start a new dialogue session</p>
+                    <p><strong>Request Body:</strong></p>
+                    <div class="code-block">
+                        <pre>{
+  "initial_message": "string",
+  "n_results": 3
+}</pre>
+                    </div>
+                    <p><strong>Response:</strong></p>
+                    <div class="code-block">
+                        <pre>{
+  "conversation_id": "string",
+  "response": "string"
+}</pre>
+                    </div>
+                </div>
+            </div>
+
+            <div class="api-card">
+                <span class="method">POST</span>
+                <span class="endpoint">/dialogues/flow_chaintest1_dialogue/continue</span>
+                <div class="description">
+                    <p><strong>Purpose:</strong> Continue an existing dialogue session</p>
+                    <p><strong>Request Body:</strong></p>
+                    <div class="code-block">
+                        <pre>{
+  "conversation_id": "string",
+  "user_message": "string"
+}</pre>
+                    </div>
+                    <p><strong>Response:</strong></p>
+                    <div class="code-block">
+                        <pre>{
+  "conversation_id": "string",
+  "response": "string",
+  "dialogue_id": "string",
+  "turn_number": 1,
+  "max_turns": 20,
+  "needs_more_info": false,
+  "is_complete": false,
+  "needs_user_input": true,
+  "conversation_history": [ ... ],
+  "llm_provider": "Qwen",
+  "model_name": "qwen3-max"
+}</pre>
+                    </div>
+                </div>
+            </div>
+
+            <div class="api-card">
+                <span class="method">GET</span>
+                <span class="endpoint">/dialogues</span>
+                <div class="description">
+                    <p><strong>Purpose:</strong> Get dialogue configuration information</p>
+                    <p><strong>Response:</strong> Array of DialogueInfo objects</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>DashScope AI API</h2>
+            <p>Used for AI-powered features (SQL generation, form generation, HTML generation, chat responses).</p>
+
+            <div class="api-card">
+                <span class="method">POST</span>
+                <span class="endpoint">https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation</span>
+                <div class="description">
+                    <p><strong>Purpose:</strong> AI text generation</p>
+                    <p><strong>Model:</strong> qwen3-max</p>
+                    <p><strong>Usage:</strong> Internal service calls, not exposed directly to clients</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Request/Response Flow</h2>
+            <div class="flow-diagram">
+                <div class="flow-step">
+                    <h4>1. Client Request</h4>
+                    <p>Frontend sends HTTP request to Go backend</p>
+                </div>
+                <div class="flow-step">
+                    <h4>2. Handler Processing</h4>
+                    <p>Gin router matches endpoint and calls appropriate handler</p>
+                </div>
+                <div class="flow-step">
+                    <h4>3. Service Layer</h4>
+                    <p>Handler calls service methods for business logic</p>
+                </div>
+                <div class="flow-step">
+                    <h4>4. External API Calls</h4>
+                    <p>Service makes HTTP requests to Ground Control or DashScope</p>
+                </div>
+                <div class="flow-step">
+                    <h4>5. Data Storage</h4>
+                    <p>Results stored in BadgerDB or file system</p>
+                </div>
+                <div class="flow-step">
+                    <h4>6. Response</h4>
+                    <p>JSON response sent back to client</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Error Handling</h2>
+            <p>All API endpoints return standard error responses:</p>
+            <div class="code-block">
+                <pre>{
+  "error": "Error message description"
+}</pre>
+            </div>
+            <p><strong>HTTP Status Codes:</strong></p>
+            <ul>
+                <li><code>200</code> - Success</li>
+                <li><code>400</code> - Bad Request (invalid input)</li>
+                <li><code>500</code> - Internal Server Error</li>
+            </ul>
+        </div>
+    </div>
+
+    <footer>
+        <p>Transfinder Form Assistant Design - API Documentation</p>
+    </footer>
+</body>
+</html>
+

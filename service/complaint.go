@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-const ComplaintAPIBaseURL = "http://localhost:8000"
+const ComplaintAPIBaseURL = "http://192.168.9.136:8000"
 
 type ComplaintService struct {
 	httpClient *http.Client

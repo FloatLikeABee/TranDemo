@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Architecture - Transfinder Form Assistant Design</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <a href="index.html" class="logo">Transfinder Form Assistant Design</a>
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="architecture.html">Architecture</a></li>
+                <li><a href="database.html">Database</a></li>
+                <li><a href="apis.html">Core APIs</a></li>
+                <li><a href="complaint.html">Complaint Flow</a></li>
+                <li><a href="form-generation.html">Form Generation</a></li>
+                <li><a href="student-report.html">Student Report</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="hero">
+            <h1>System Architecture</h1>
+            <p>Comprehensive overview of the system structure and components</p>
+        </div>
+
+        <div class="section">
+            <h2>High-Level Architecture</h2>
+            <p>The Transfinder Form Assistant follows a layered architecture pattern with clear separation of concerns:</p>
+            
+            <div class="flow-diagram">
+                <div class="flow-step">
+                    <h4>Frontend Layer (React)</h4>
+                    <p><strong>Location:</strong> <code>frontend/src/</code></p>
+                    <p><strong>Components:</strong> Chat interface, voice input, form display, report visualization</p>
+                    <p><strong>Communication:</strong> REST API calls to Go backend</p>
+                </div>
+                
+                <div class="flow-step">
+                    <h4>API Layer (Gin Framework)</h4>
+                    <p><strong>Location:</strong> <code>handlers/</code></p>
+                    <p><strong>Endpoints:</strong> Chat, complaint, form, SQL, voice, results</p>
+                    <p><strong>Responsibilities:</strong> Request routing, validation, response formatting</p>
+                </div>
+                
+                <div class="flow-step">
+                    <h4>Service Layer</h4>
+                    <p><strong>Location:</strong> <code>service/</code></p>
+                    <p><strong>Services:</strong> ComplaintService, SQLService, VoiceService</p>
+                    <p><strong>Responsibilities:</strong> Business logic, external API integration</p>
+                </div>
+                
+                <div class="flow-step">
+                    <h4>AI Service Layer</h4>
+                    <p><strong>Location:</strong> <code>ai/</code></p>
+                    <p><strong>Capabilities:</strong> SQL generation, form generation, HTML generation, chat responses</p>
+                    <p><strong>Model:</strong> Qwen3-Max via DashScope API</p>
+                </div>
+                
+                <div class="flow-step">
+                    <h4>Data Layer</h4>
+                    <p><strong>Storage:</strong> BadgerDB (key-value store) + SQL Server</p>
+                    <p><strong>Location:</strong> <code>db/</code></p>
+                    <p><strong>Data:</strong> Chat history, complaint state, SQL files, voice profiles</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Package Structure</h2>
+            <div class="code-block">
+                <pre>
+idongivaflyinfa/
+├── main.go                 # Application entry point
+├── config/                 # Configuration management
+│   ├── config.go          # App configuration
+│   ├── form_sample.json   # Form template
+│   └── misc.go            # SQL templates
+├── models/                # Data models
+│   └── models.go         # All struct definitions
+├── db/                    # Database operations
+│   └── db.go             # BadgerDB wrapper
+├── cache/                 # Caching layer
+│   └── cache.go          # In-memory cache
+├── ai/                    # AI service
+│   ├── ai.go             # AI API integration
+│   └── PromptHelper.go   # Prompt builders
+├── service/               # Business logic services
+│   ├── complaint.go      # Complaint flow service
+│   ├── sqlserver.go      # SQL Server connection
+│   ├── results.go        # Result file management
+│   └── voice.go          # Voice recognition
+├── handlers/              # HTTP handlers
+│   ├── handlers.go       # Handler initialization
+│   ├── chat.go           # Chat endpoint
+│   ├── complaint.go      # Complaint flow handler
+│   ├── form.go           # Form generation
+│   ├── sql.go            # SQL file management
+│   ├── results.go        # Result file endpoints
+│   └── voice.go          # Voice endpoints
+├── frontend/             # React frontend
+│   └── src/
+│       ├── App.js        # Main app component
+│       └── App.css       # Styling
+├── sql_files/            # Reference SQL files
+├── results/              # Generated result files
+└── products/             # Generated HTML pages
+                </pre>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Data Flow</h2>
+            
+            <h3>Complaint Flow</h3>
+            <div class="flow-diagram">
+                <div class="flow-step">
+                    <h4>1. User Request</h4>
+                    <p>User sends complaint message via chat interface</p>
+                </div>
+                <div class="flow-step">
+                    <h4>2. Request Detection</h4>
+                    <p>Handler detects complaint keywords and routes to complaint flow</p>
+                </div>
+                <div class="flow-step">
+                    <h4>3. Initialize Process</h4>
+                    <p>ComplaintService calls Ground Control API to initialize flow</p>
+                </div>
+                <div class="flow-step">
+                    <h4>4. Start Dialogue</h4>
+                    <p>Begin conversation with Ground Control dialogue API</p>
+                </div>
+                <div class="flow-step">
+                    <h4>5. Continue Dialogue</h4>
+                    <p>Multiple exchanges until dialogue is complete</p>
+                </div>
+                <div class="flow-step">
+                    <h4>6. Execute & Finalize</h4>
+                    <p>Execute final step and return outcome to user</p>
+                </div>
+            </div>
+
+            <h3>Form Generation Flow</h3>
+            <div class="flow-diagram">
+                <div class="flow-step">
+                    <h4>1. User Request</h4>
+                    <p>User requests form creation via natural language</p>
+                </div>
+                <div class="flow-step">
+                    <h4>2. AI Form Generation</h4>
+                    <p>AIService generates form JSON based on template and user request</p>
+                </div>
+                <div class="flow-step">
+                    <h4>3. HTML Generation</h4>
+                    <p>AIService generates HTML page from form JSON</p>
+                </div>
+                <div class="flow-step">
+                    <h4>4. Save & Return</h4>
+                    <p>HTML saved to products/ folder and JSON returned to user</p>
+                </div>
+            </div>
+
+            <h3>Student Report Flow</h3>
+            <div class="flow-diagram">
+                <div class="flow-step">
+                    <h4>1. User Request</h4>
+                    <p>User requests report via natural language</p>
+                </div>
+                <div class="flow-step">
+                    <h4>2. SQL Generation</h4>
+                    <p>AIService generates SQL query using reference SQL files</p>
+                </div>
+                <div class="flow-step">
+                    <h4>3. SQL Execution</h4>
+                    <p>SQLService executes query against SQL Server</p>
+                </div>
+                <div class="flow-step">
+                    <h4>4. Result Processing</h4>
+                    <p>Results saved as JSON, then HTML page generated</p>
+                </div>
+                <div class="flow-step">
+                    <h4>5. Return to User</h4>
+                    <p>SQL query and result info returned to user</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>External Integrations</h2>
+            <ul>
+                <li><strong>Ground Control API:</strong> Dialogue-driven flow execution for complaint processing
+                    <ul>
+                        <li>Base URL: <code>http://192.168.9.136:8000</code></li>
+                        <li>Endpoints: Special flows, dialogue management</li>
+                    </ul>
+                </li>
+                <li><strong>DashScope API:</strong> AI model access (Qwen3-Max)
+                    <ul>
+                        <li>Used for: SQL generation, form generation, HTML generation, chat responses</li>
+                    </ul>
+                </li>
+                <li><strong>SQL Server:</strong> Student database
+                    <ul>
+                        <li>Connection: SQL Server driver</li>
+                        <li>Database: team2_ent</li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>Technology Stack</h2>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h4>Backend</h4>
+                    <ul>
+                        <li>Go 1.21+</li>
+                        <li>Gin Web Framework</li>
+                        <li>BadgerDB (key-value store)</li>
+                        <li>go-cache (in-memory caching)</li>
+                    </ul>
+                </div>
+                <div class="feature-card">
+                    <h4>Frontend</h4>
+                    <ul>
+                        <li>React</li>
+                        <li>Axios (HTTP client)</li>
+                        <li>Speech Recognition API</li>
+                        <li>Web Audio API</li>
+                    </ul>
+                </div>
+                <div class="feature-card">
+                    <h4>AI & Services</h4>
+                    <ul>
+                        <li>Qwen3-Max (DashScope)</li>
+                        <li>Ground Control API</li>
+                        <li>SQL Server Driver</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>Transfinder Form Assistant Design - Architecture Documentation</p>
+    </footer>
+</body>
+</html>
+

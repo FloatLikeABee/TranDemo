@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Form Generation - Transfinder Form Assistant Design</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <a href="index.html" class="logo">Transfinder Form Assistant Design</a>
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="architecture.html">Architecture</a></li>
+                <li><a href="database.html">Database</a></li>
+                <li><a href="apis.html">Core APIs</a></li>
+                <li><a href="complaint.html">Complaint Flow</a></li>
+                <li><a href="form-generation.html">Form Generation</a></li>
+                <li><a href="student-report.html">Student Report</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="hero">
+            <h1>Form Generation</h1>
+            <p>AI-powered form creation from natural language descriptions</p>
+        </div>
+
+        <div class="section">
+            <h2>Overview</h2>
+            <p>The form generation feature allows users to create complete form structures (JSON) and HTML pages by simply describing what they need in natural language. The system uses AI to generate forms based on a template structure.</p>
+        </div>
+
+        <div class="section">
+            <h2>How It Works</h2>
+            
+            <div class="flow-diagram">
+                <div class="flow-step">
+                    <h4>Step 1: Request Detection</h4>
+                    <p>The system detects form generation requests using keyword matching:</p>
+                    <div class="code-block">
+                        <pre>Keywords: "create form", "generate a form", 
+         "make a form", "build a form", 
+         "i want a new form"</pre>
+                    </div>
+                    <p>When detected, the request is routed to form generation instead of SQL or general chat.</p>
+                </div>
+
+                <div class="flow-step">
+                    <h4>Step 2: Form JSON Generation</h4>
+                    <p><strong>Service:</strong> <code>AIService.GenerateForm()</code></p>
+                    <p><strong>Process:</strong></p>
+                    <ul>
+                        <li>Loads form template from <code>config/form_sample.json</code></li>
+                        <li>Builds prompt using <code>BuildFormPrompt()</code> helper</li>
+                        <li>Calls DashScope API (Qwen3-Max) with user request and template</li>
+                        <li>AI generates new form JSON following the exact template structure</li>
+                        <li>Only form name, description, section names, and question titles change</li>
+                        <li>All field types, validation rules, and structure remain identical</li>
+                    </ul>
+                    <p><strong>Output:</strong> Valid JSON form structure</p>
+                </div>
+
+                <div class="flow-step">
+                    <h4>Step 3: HTML Page Generation</h4>
+                    <p><strong>Service:</strong> <code>AIService.GenerateFormHTMLPage()</code></p>
+                    <p><strong>Process:</strong></p>
+                    <ul>
+                        <li>Parses generated form JSON to extract name and description</li>
+                        <li>Builds prompt using <code>BuildFormHTMLPrompt()</code> helper</li>
+                        <li>Calls DashScope API to generate complete HTML page</li>
+                        <li>HTML follows dark gray and orange theme</li>
+                        <li>Only renders <code>UDGridSections</code> from JSON (hides configuration fields)</li>
+                    </ul>
+                    <p><strong>Output:</strong> Complete HTML page with form elements</p>
+                </div>
+
+                <div class="flow-step">
+                    <h4>Step 4: Save & Return</h4>
+                    <p><strong>File Saving:</strong></p>
+                    <ul>
+                        <li>HTML saved to <code>products/</code> directory</li>
+                        <li>Filename format: <code>form_YYYYMMDD_HHMMSS.html</code></li>
+                    </ul>
+                    <p><strong>Response:</strong> Form JSON returned to user in chat response</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Form Template Structure</h2>
+            <p>The system uses a fixed template structure that all generated forms must follow:</p>
+            
+            <div class="code-block">
+                <pre>{
+  "Name": "Form Name",
+  "Description": "Form Description",
+  "Public": true/false,
+  "InIPBoundary": false,
+  "RequireIPAddress": false,
+  "ID": 0,
+  "DataTypeId": 0,
+  "UDGridSections": [
+    {
+      "Name": "Section Name",
+      "UDGridFields": [
+        {
+          "Name": "Field Name",
+          "Type": "text|number|date|...",
+          "Required": true/false,
+          "Validation": { ... }
+        }
+      ]
+    }
+  ]
+}</pre>
+            </div>
+
+            <h3>Template Rules</h3>
+            <ul>
+                <li><strong>Fixed Structure:</strong> All fields must remain in the exact same structure</li>
+                <li><strong>Allowed Changes:</strong>
+                    <ul>
+                        <li>Form name</li>
+                        <li>Form description</li>
+                        <li>Section names</li>
+                        <li>Question/field titles</li>
+                        <li>Public flag (true for surveys, false for internal forms)</li>
+                    </ul>
+                </li>
+                <li><strong>Fixed Elements:</strong>
+                    <ul>
+                        <li>Field types</li>
+                        <li>Validation rules</li>
+                        <li>Data structure</li>
+                        <li>Configuration fields (InIPBoundary, RequireIPAddress, etc.)</li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>HTML Generation</h2>
+            <p>The generated HTML pages follow strict design guidelines:</p>
+            
+            <h3>Theme Requirements</h3>
+            <ul>
+                <li><strong>Primary/Accent Color:</strong> Dark Orange (#FF8C00, #FF7F00, #E67300)</li>
+                <li><strong>Background:</strong> Really Dark Grey (#121212, #181818, #1e1e1e)</li>
+                <li><strong>Text:</strong> Light grey or white for contrast</li>
+                <li><strong>Inputs:</strong> Darker background with subtle borders (#303030–#3a3a3a)</li>
+                <li><strong>Style:</strong> Minimal, professional dark theme</li>
+            </ul>
+
+            <h3>Form Rendering</h3>
+            <p>Only the <code>UDGridSections</code> array is rendered as visible form elements:</p>
+            <ul>
+                <li>Sections are displayed as grouped form sections</li>
+                <li>Fields (UDGridFields) are rendered as appropriate input types</li>
+                <li>Configuration fields (InIPBoundary, RequireIPAddress, ID, DataTypeId) are hidden</li>
+                <li>Form includes proper labels, validation, and styling</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>Example Usage</h2>
+            
+            <h3>User Request</h3>
+            <div class="code-block">
+                <pre>"Create a form for student attendance tracking with fields for 
+student name, date, and attendance status"</pre>
+            </div>
+
+            <h3>Generated Form JSON (Excerpt)</h3>
+            <div class="code-block">
+                <pre>{
+  "Name": "Student Attendance Tracking Form",
+  "Description": "Form for tracking student attendance",
+  "Public": false,
+  "UDGridSections": [
+    {
+      "Name": "Attendance Information",
+      "UDGridFields": [
+        {
+          "Name": "Student Name",
+          "Type": "text",
+          "Required": true
+        },
+        {
+          "Name": "Date",
+          "Type": "date",
+          "Required": true
+        },
+        {
+          "Name": "Attendance Status",
+          "Type": "select",
+          "Required": true
+        }
+      ]
+    }
+  ]
+}</pre>
+            </div>
+
+            <h3>Generated HTML</h3>
+            <p>A complete HTML page is generated with:</p>
+            <ul>
+                <li>Dark gray background with orange accents</li>
+                <li>Form title and description</li>
+                <li>Styled input fields matching the JSON structure</li>
+                <li>Proper form validation</li>
+                <li>Submit button with orange styling</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>API Integration</h2>
+            <p>Form generation is handled through the main chat endpoint:</p>
+            
+            <div class="api-card">
+                <span class="method">POST</span>
+                <span class="endpoint">/api/chat</span>
+                <div class="description">
+                    <p><strong>Request Body:</strong></p>
+                    <div class="code-block">
+                        <pre>{
+  "message": "Create a form for..."
+}</pre>
+                    </div>
+                    <p><strong>Response:</strong></p>
+                    <div class="code-block">
+                        <pre>{
+  "response": "Here's the form JSON based on your request:\n\n{...}",
+  "form_json": "{...}"
+}</pre>
+                    </div>
+                </div>
+            </div>
+
+            <h3>Internal Service Calls</h3>
+            <ul>
+                <li><code>AIService.GenerateForm()</code> - Generates form JSON</li>
+                <li><code>AIService.GenerateFormHTMLPage()</code> - Generates HTML page</li>
+                <li>File system write to <code>products/</code> directory</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>Caching</h2>
+            <p>Generated forms are cached using in-memory cache (go-cache):</p>
+            <ul>
+                <li><strong>Cache Key:</strong> <code>form_prompt:{userPrompt}</code></li>
+                <li><strong>Purpose:</strong> Avoid regenerating identical forms for the same request</li>
+                <li><strong>Scope:</strong> Form JSON only (HTML is regenerated each time)</li>
+            </ul>
+        </div>
+    </div>
+
+    <footer>
+        <p>Transfinder Form Assistant Design - Form Generation Documentation</p>
+    </footer>
+</body>
+</html>
+
