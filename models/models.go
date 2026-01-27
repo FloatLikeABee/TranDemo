@@ -92,3 +92,54 @@ type VoiceRecognitionResponse struct {
 	Message    string `json:"message"`
 }
 
+// Form system models
+type FormField struct {
+	Name        string `json:"name"`         // Field identifier (e.g., "name", "age")
+	Label       string `json:"label"`        // Display label (e.g., "Full Name")
+	Type        string `json:"type"`         // Field type: "text", "email", "number", "tel", "date", "select", etc.
+	Required    bool   `json:"required"`     // Whether field is required
+	Placeholder string `json:"placeholder"`  // Placeholder text
+	Options     []string `json:"options,omitempty"` // Options for select/radio fields
+}
+
+type FormTemplate struct {
+	ID          string     `json:"id"`           // Unique identifier
+	Name        string     `json:"name"`         // Form name (e.g., "Student Registration Form")
+	Description string     `json:"description"`  // Form description
+	UserType    string     `json:"user_type"`    // "student" or "staff"
+	Fields      []FormField `json:"fields"`      // Form fields
+	CreatedAt   string     `json:"created_at"`   // Creation timestamp
+	UpdatedAt   string     `json:"updated_at"`   // Last update timestamp
+	CreatedBy   string     `json:"created_by"`   // User who created the form
+}
+
+type FormAnswer struct {
+	ID          string                 `json:"id"`           // Unique identifier
+	FormID      string                 `json:"form_id"`      // Reference to FormTemplate
+	FormName    string                 `json:"form_name"`    // Form name (denormalized for easy access)
+	UserID      string                 `json:"user_id"`      // Student or staff ID
+	UserType    string                 `json:"user_type"`    // "student" or "staff"
+	Answers     map[string]interface{} `json:"answers"`      // Field name -> answer value
+	SubmittedAt string                 `json:"submitted_at"` // Submission timestamp
+	SubmittedBy string                 `json:"submitted_by"` // User who submitted
+}
+
+// RegistrationFlowState holds state for the "register a student" (or similar) chat flow
+type RegConvTurn struct {
+	Role    string `json:"role"`    // "user" or "assistant"
+	Content string `json:"content"` // message content
+}
+
+type RegistrationState struct {
+	ConversationID    string                 `json:"conversation_id"`    // unique session id
+	Step              string                 `json:"step"`                 // "selecting_form" | "gathering_fields" | "complete"
+	FormID            string                 `json:"form_id,omitempty"`    // chosen form template id (internal, not shown to AI)
+	FormName          string                 `json:"form_name,omitempty"`  // form name for context
+	UserType          string                 `json:"user_type,omitempty"`  // student | staff from form
+	GatheredAnswers   map[string]interface{} `json:"gathered_answers"`    // field name -> value so far
+	ConversationHistory []RegConvTurn        `json:"conversation_history"` // full chat history for this session
+	LastAIResponse    string                 `json:"last_ai_response,omitempty"`
+	ExchangeCount     int                    `json:"exchange_count"`
+	CreatedAt         string                 `json:"created_at,omitempty"`
+}
+

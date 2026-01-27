@@ -496,3 +496,29 @@ Corrected message:`, userInput)
 
 	return corrected, nil
 }
+
+// GenerateFromMessages calls the model with the given message list (e.g. system + user + assistant + user).
+// Used by registration flow and other custom prompts.
+func (a *AIService) GenerateFromMessages(ctx context.Context, messages []DashScopeMessage) (string, error) {
+	return a.callDashScopeAPI(ctx, messages)
+}
+
+// RegistrationFormSelect asks the model to pick one form name from a list (no IDs). Returns the model reply (form name or NONE).
+func (a *AIService) RegistrationFormSelect(ctx context.Context, userMessage, formNamesDescriptions string) (string, error) {
+	sys, user := BuildFormSelectionPrompt(userMessage, formNamesDescriptions)
+	messages := []DashScopeMessage{
+		{Role: "system", Content: sys},
+		{Role: "user", Content: user},
+	}
+	return a.callDashScopeAPI(ctx, messages)
+}
+
+// RegistrationFieldGathering asks the model whether we have all required fields or what to ask next. Returns raw reply (JSON string).
+func (a *AIService) RegistrationFieldGathering(ctx context.Context, conversationHistory []models.RegConvTurn, formFields []models.FormField, latestUserMessage string) (string, error) {
+	sys, conv := BuildFieldGatheringPrompt(conversationHistory, formFields, latestUserMessage)
+	messages := []DashScopeMessage{
+		{Role: "system", Content: sys},
+		{Role: "user", Content: conv},
+	}
+	return a.callDashScopeAPI(ctx, messages)
+}

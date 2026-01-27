@@ -164,3 +164,53 @@ func BuildFormHTMLPrompt(formJSON string, formName string, formDescription strin
 	return promptBuilder.String()
 }
 
+// BuildFormSelectionPrompt builds the system + user prompt for choosing a form by name.
+// formNamesDescriptions is a plain list like "Student Registration Form (registers students with name, age, etc.), Staff Attendance Form (name, staff number, time)"
+// No form IDs are included; the caller maps the chosen name back to ID.
+func BuildFormSelectionPrompt(userMessage string, formNamesDescriptions string) (systemPrompt string, userPrompt string) {
+	systemPrompt = `You are a form assistant. The user wants to register or fill out a form. You must pick exactly one form that best matches their request.
+
+Available forms (name and short description only):
+` + formNamesDescriptions + `
+
+Rules:
+- Reply with exactly ONE form name from the list above, nothing else. Use the exact form name as written.
+- If no form fits the user's request, reply with exactly: NONE
+- Do not include IDs, explanations, or extra text. Only the form name or NONE.`
+	userPrompt = "User said: " + userMessage
+	return systemPrompt, userPrompt
+}
+
+// BuildFieldGatheringPrompt builds the system prompt and appends conversation + latest user message
+// so the model can decide either "complete" with answers JSON or "ask" for missing fields.
+func BuildFieldGatheringPrompt(conversationHistory []models.RegConvTurn, formFields []models.FormField, latestUserMessage string) (systemPrompt string, conversationForModel string) {
+	var fieldsDesc strings.Builder
+	for _, f := range formFields {
+		req := ""
+		if f.Required {
+			req = " (required)"
+		}
+		fieldsDesc.WriteString(fmt.Sprintf("- %s (field name: %s)%s\n", f.Label, f.Name, req))
+	}
+	systemPrompt = `You are a form-filling assistant. We are filling a form. The form has these fields:
+` + fieldsDesc.String() + `
+
+You have a conversation so far. Based on the full conversation and the latest user message, decide:
+1. If we have values for ALL required fields (from the conversation and latest message combined), reply with ONLY this JSON, no other text:
+   {"complete":true,"answers":{"field_name":"value","field_name2":"value2",...}}
+   Use the exact field names (e.g. ` + "`name`" + `, ` + "`age`" + `) as keys. Include every field we know; required ones must have a value.
+2. If we are still missing any required field (or you are unsure), reply with ONLY this JSON:
+   {"complete":false,"ask":"A short, friendly question asking the user for the missing information."}
+
+Rules:
+- Output ONLY valid JSON. No markdown, no code fences, no explanation.
+- For "ask", be concise and ask for one or two missing items at a time.`
+	var convBuilder strings.Builder
+	for _, t := range conversationHistory {
+		convBuilder.WriteString(fmt.Sprintf("%s: %s\n", t.Role, t.Content))
+	}
+	convBuilder.WriteString("user: " + latestUserMessage)
+	conversationForModel = convBuilder.String()
+	return systemPrompt, conversationForModel
+}
+

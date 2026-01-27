@@ -103,7 +103,38 @@ func (h *Handlers) ChatHandler(c *gin.Context) {
 		return
 	}
 
-	// Load SQL files (only if not in complaint flow)
+	// PRIORITY 2.5: Registration flow (register student / similar) — active session first
+	regState, regErr := h.db.GetRegistrationStateByUserID(userID)
+	if regErr == nil && regState != nil && regState.Step != "complete" && regState.Step != "" {
+		log.Printf("[CHAT HANDLER] User %s has active registration session (form: %s)", userID, regState.FormName)
+		response, err := h.handleRegistrationFlow(c, userID, req.Message)
+		if err != nil {
+			log.Printf("[CHAT HANDLER] Error in registration flow: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to process registration: %v", err)})
+			return
+		}
+		if response != nil {
+			c.JSON(http.StatusOK, response)
+			return
+		}
+	}
+
+	// PRIORITY 3: New registration intent (e.g. "I want to register a student")
+	if isRegisterStudentRequest(req.Message) {
+		log.Printf("[CHAT HANDLER] Detected register-student (or similar) request from user %s", userID)
+		response, err := h.handleRegistrationFlow(c, userID, req.Message)
+		if err != nil {
+			log.Printf("[CHAT HANDLER] Error in registration flow: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to process registration: %v", err)})
+			return
+		}
+		if response != nil {
+			c.JSON(http.StatusOK, response)
+			return
+		}
+	}
+
+	// Load SQL files (only if not in complaint or registration flow)
 	sqlFiles, err := h.db.GetSQLFiles()
 	if err != nil {
 		log.Printf("Error loading SQL files from DB: %v", err)

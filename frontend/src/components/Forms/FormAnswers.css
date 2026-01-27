@@ -1,0 +1,226 @@
+.form-answers-container {
+  min-height: 100vh;
+  background: #1a1a1a;
+  color: #e0e0e0;
+  padding: 2rem;
+}
+
+.form-answers-header {
+  max-width: 1400px;
+  margin: 0 auto 2rem;
+  text-align: center;
+  padding: 2rem 0;
+  border-bottom: 2px solid #FF8C00;
+}
+
+.form-answers-header h1 {
+  color: #FF8C00;
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.form-answers-header p {
+  color: #b0b0b0;
+  font-size: 1.1rem;
+}
+
+.form-answers-content {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.view-toggle {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.view-toggle button {
+  padding: 0.5rem 1rem;
+  background: #3a3a3a;
+  color: #e0e0e0;
+  border: 1px solid #3a3a3a;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.view-toggle button.active {
+  background: #FF8C00;
+  color: #1a1a1a;
+  border-color: #FF8C00;
+}
+
+.answers-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.answer-card {
+  background: #2a2a2a;
+  border: 1px solid #3a3a3a;
+  border-left: 4px solid #FF8C00;
+  border-radius: 8px;
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.answer-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 5px 15px rgba(255, 140, 0, 0.3);
+  border-color: #FF8C00;
+}
+
+.answer-card h3 {
+  color: #FF8C00;
+  margin-bottom: 0.5rem;
+  font-size: 1.2rem;
+}
+
+.answer-card .meta {
+  color: #b0b0b0;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.answer-card .answers-list {
+  margin: 1rem 0;
+}
+
+.answer-item {
+  padding: 0.75rem;
+  margin: 0.5rem 0;
+  background: #1a1a1a;
+  border-radius: 4px;
+  border-left: 3px solid #FF8C00;
+}
+
+.answer-item strong {
+  color: #FF8C00;
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.answer-item span {
+  color: #e0e0e0;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: bold;
+}
+
+.badge-student {
+  background: rgba(0, 123, 255, 0.2);
+  color: #007bff;
+  border: 1px solid #007bff;
+}
+
+.badge-staff {
+  background: rgba(40, 167, 69, 0.2);
+  color: #28a745;
+  border: 1px solid #28a745;
+}
+
+.answers-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #2a2a2a;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #3a3a3a;
+  margin-bottom: 2rem;
+}
+
+.answers-table thead {
+  background: #FF8C00;
+  color: #1a1a1a;
+}
+
+.answers-table th {
+  padding: 1rem;
+  text-align: left;
+  font-weight: bold;
+}
+
+.answers-table td {
+  padding: 1rem;
+  border-bottom: 1px solid #3a3a3a;
+  color: #e0e0e0;
+}
+
+.answers-table tbody tr:hover {
+  background: #3a3a3a;
+}
+
+.answers-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.answers-editor {
+  border: 1px solid #3a3a3a;
+  border-radius: 4px;
+  padding: 1rem;
+  background: #1a1a1a;
+}
+
+.answer-field-item {
+  background: #3a3a3a;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  border-radius: 4px;
+  border-left: 3px solid #FF8C00;
+}
+
+.answer-field-item label {
+  color: #FF8C00;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.answer-field-item input,
+.answer-field-item select {
+  width: 100%;
+  padding: 0.75rem;
+  background: #1a1a1a;
+  color: #e0e0e0;
+  border: 1px solid #3a3a3a;
+  border-radius: 4px;
+  font-size: 1rem;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.answer-field-item input:focus,
+.answer-field-item select:focus {
+  outline: none;
+  border-color: #FF8C00;
+}
+
+@media (max-width: 768px) {
+  .form-answers-container {
+    padding: 1rem;
+  }
+
+  .form-answers-header h1 {
+    font-size: 2rem;
+  }
+
+  .answers-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .answers-table {
+    font-size: 0.9rem;
+  }
+
+  .answers-table th,
+  .answers-table td {
+    padding: 0.75rem 0.5rem;
+  }
+}

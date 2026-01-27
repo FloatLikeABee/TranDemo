@@ -391,3 +391,284 @@ func (d *DB) DeleteVoiceProfile(userID string) error {
 	})
 }
 
+// Form Template CRUD operations
+
+// StoreFormTemplate stores a form template
+func (d *DB) StoreFormTemplate(template *models.FormTemplate) error {
+	return d.badgerDB.Update(func(txn *badger.Txn) error {
+		key := []byte(fmt.Sprintf("form_template:%s", template.ID))
+		
+		data, err := json.Marshal(template)
+		if err != nil {
+			return err
+		}
+		
+		return txn.Set(key, data)
+	})
+}
+
+// GetFormTemplate retrieves a form template by ID
+func (d *DB) GetFormTemplate(id string) (*models.FormTemplate, error) {
+	var template *models.FormTemplate
+	
+	err := d.badgerDB.View(func(txn *badger.Txn) error {
+		key := []byte(fmt.Sprintf("form_template:%s", id))
+		
+		item, err := txn.Get(key)
+		if err != nil {
+			return err
+		}
+		
+		return item.Value(func(val []byte) error {
+			template = &models.FormTemplate{}
+			return json.Unmarshal(val, template)
+		})
+	})
+	
+	if err != nil {
+		return nil, err
+	}
+	
+	return template, nil
+}
+
+// GetAllFormTemplates retrieves all form templates
+func (d *DB) GetAllFormTemplates() ([]models.FormTemplate, error) {
+	var templates []models.FormTemplate
+	
+	err := d.badgerDB.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.Prefix = []byte("form_template:")
+		it := txn.NewIterator(opts)
+		defer it.Close()
+		
+		for it.Rewind(); it.Valid(); it.Next() {
+			item := it.Item()
+			err := item.Value(func(val []byte) error {
+				var template models.FormTemplate
+				if err := json.Unmarshal(val, &template); err != nil {
+					return err
+				}
+				templates = append(templates, template)
+				return nil
+			})
+			if err != nil {
+				return err
+			}
+		}
+		
+		return nil
+	})
+	
+	if err != nil {
+		return nil, err
+	}
+	
+	return templates, nil
+}
+
+// DeleteFormTemplate deletes a form template
+func (d *DB) DeleteFormTemplate(id string) error {
+	return d.badgerDB.Update(func(txn *badger.Txn) error {
+		key := []byte(fmt.Sprintf("form_template:%s", id))
+		return txn.Delete(key)
+	})
+}
+
+// Form Answer CRUD operations
+
+// StoreFormAnswer stores a form answer
+func (d *DB) StoreFormAnswer(answer *models.FormAnswer) error {
+	return d.badgerDB.Update(func(txn *badger.Txn) error {
+		key := []byte(fmt.Sprintf("form_answer:%s", answer.ID))
+		
+		data, err := json.Marshal(answer)
+		if err != nil {
+			return err
+		}
+		
+		return txn.Set(key, data)
+	})
+}
+
+// GetFormAnswer retrieves a form answer by ID
+func (d *DB) GetFormAnswer(id string) (*models.FormAnswer, error) {
+	var answer *models.FormAnswer
+	
+	err := d.badgerDB.View(func(txn *badger.Txn) error {
+		key := []byte(fmt.Sprintf("form_answer:%s", id))
+		
+		item, err := txn.Get(key)
+		if err != nil {
+			return err
+		}
+		
+		return item.Value(func(val []byte) error {
+			answer = &models.FormAnswer{}
+			return json.Unmarshal(val, answer)
+		})
+	})
+	
+	if err != nil {
+		return nil, err
+	}
+	
+	return answer, nil
+}
+
+// GetAllFormAnswers retrieves all form answers
+func (d *DB) GetAllFormAnswers() ([]models.FormAnswer, error) {
+	var answers []models.FormAnswer
+	
+	err := d.badgerDB.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.Prefix = []byte("form_answer:")
+		it := txn.NewIterator(opts)
+		defer it.Close()
+		
+		for it.Rewind(); it.Valid(); it.Next() {
+			item := it.Item()
+			err := item.Value(func(val []byte) error {
+				var answer models.FormAnswer
+				if err := json.Unmarshal(val, &answer); err != nil {
+					return err
+				}
+				answers = append(answers, answer)
+				return nil
+			})
+			if err != nil {
+				return err
+			}
+		}
+		
+		return nil
+	})
+	
+	if err != nil {
+		return nil, err
+	}
+	
+	return answers, nil
+}
+
+// GetFormAnswersByFormID retrieves all answers for a specific form
+func (d *DB) GetFormAnswersByFormID(formID string) ([]models.FormAnswer, error) {
+	var answers []models.FormAnswer
+	
+	err := d.badgerDB.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.Prefix = []byte("form_answer:")
+		it := txn.NewIterator(opts)
+		defer it.Close()
+		
+		for it.Rewind(); it.Valid(); it.Next() {
+			item := it.Item()
+			err := item.Value(func(val []byte) error {
+				var answer models.FormAnswer
+				if err := json.Unmarshal(val, &answer); err != nil {
+					return err
+				}
+				if answer.FormID == formID {
+					answers = append(answers, answer)
+				}
+				return nil
+			})
+			if err != nil {
+				return err
+			}
+		}
+		
+		return nil
+	})
+	
+	if err != nil {
+		return nil, err
+	}
+	
+	return answers, nil
+}
+
+// GetFormAnswersByUserID retrieves all answers submitted by a specific user
+func (d *DB) GetFormAnswersByUserID(userID string) ([]models.FormAnswer, error) {
+	var answers []models.FormAnswer
+	
+	err := d.badgerDB.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.Prefix = []byte("form_answer:")
+		it := txn.NewIterator(opts)
+		defer it.Close()
+		
+		for it.Rewind(); it.Valid(); it.Next() {
+			item := it.Item()
+			err := item.Value(func(val []byte) error {
+				var answer models.FormAnswer
+				if err := json.Unmarshal(val, &answer); err != nil {
+					return err
+				}
+				if answer.UserID == userID {
+					answers = append(answers, answer)
+				}
+				return nil
+			})
+			if err != nil {
+				return err
+			}
+		}
+		
+		return nil
+	})
+	
+	if err != nil {
+		return nil, err
+	}
+	
+	return answers, nil
+}
+
+// DeleteFormAnswer deletes a form answer
+func (d *DB) DeleteFormAnswer(id string) error {
+	return d.badgerDB.Update(func(txn *badger.Txn) error {
+		key := []byte(fmt.Sprintf("form_answer:%s", id))
+		return txn.Delete(key)
+	})
+}
+
+// Registration flow state (one active session per user)
+
+func (d *DB) StoreRegistrationState(userID string, state *models.RegistrationState) error {
+	return d.badgerDB.Update(func(txn *badger.Txn) error {
+		key := []byte(fmt.Sprintf("registration:%s", userID))
+		data, err := json.Marshal(state)
+		if err != nil {
+			return err
+		}
+		return txn.Set(key, data)
+	})
+}
+
+func (d *DB) GetRegistrationStateByUserID(userID string) (*models.RegistrationState, error) {
+	var state *models.RegistrationState
+	err := d.badgerDB.View(func(txn *badger.Txn) error {
+		key := []byte(fmt.Sprintf("registration:%s", userID))
+		item, err := txn.Get(key)
+		if err != nil {
+			return err
+		}
+		return item.Value(func(val []byte) error {
+			state = &models.RegistrationState{}
+			return json.Unmarshal(val, state)
+		})
+	})
+	if err != nil {
+		return nil, err
+	}
+	return state, nil
+}
+
+func (d *DB) DeleteRegistrationState(userID string) error {
+	return d.badgerDB.Update(func(txn *badger.Txn) error {
+		key := []byte(fmt.Sprintf("registration:%s", userID))
+		return txn.Delete(key)
+	})
+}
+

@@ -1,0 +1,86 @@
+.forms-app {
+  min-height: 100vh;
+  background: #1a1a1a;
+}
+
+.forms-nav {
+  background: #2a2a2a;
+  border-bottom: 2px solid #FF8C00;
+  padding: 1rem 2rem;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+
+.forms-nav .nav-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.forms-nav .logo {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #FF8C00;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.forms-nav .nav-links {
+  display: flex;
+  gap: 0;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.forms-nav .nav-links li {
+  margin: 0;
+  padding: 0;
+}
+
+.forms-nav .nav-links a {
+  color: #e0e0e0;
+  text-decoration: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+  display: block;
+  white-space: nowrap;
+  font-size: 0.95rem;
+}
+
+.forms-nav .nav-links a:hover {
+  background: #3a3a3a;
+  color: #FF8C00;
+  transform: translateY(-1px);
+}
+
+.forms-nav .nav-links a.active {
+  background: #FF8C00;
+  color: #1a1a1a;
+  font-weight: bold;
+}
+
+@media (max-width: 768px) {
+  .forms-nav {
+    padding: 1rem 1.5rem;
+  }
+
+  .forms-nav .nav-container {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .forms-nav .nav-links {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}

@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Form Answers - Transfinder Form Assistant</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .answers-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding: 1rem;
+            background: var(--dark-gray);
+            border-radius: 8px;
+            border: 1px solid var(--light-gray);
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .filter-group {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .filter-group label {
+            color: var(--text-light);
+        }
+
+        .filter-group select,
+        .filter-group input {
+            padding: 0.5rem 1rem;
+            background: var(--medium-gray);
+            color: var(--text-light);
+            border: 1px solid var(--light-gray);
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            background: var(--orange);
+            color: var(--darker-gray);
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            font-size: 1rem;
+        }
+
+        .btn:hover {
+            background: var(--orange-light);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(255, 140, 0, 0.3);
+        }
+
+        .btn-secondary {
+            background: var(--medium-gray);
+            color: var(--text-light);
+        }
+
+        .btn-secondary:hover {
+            background: var(--light-gray);
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .btn-small {
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+        }
+
+        .answers-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--dark-gray);
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid var(--light-gray);
+        }
+
+        .answers-table thead {
+            background: var(--orange);
+            color: var(--darker-gray);
+        }
+
+        .answers-table th {
+            padding: 1rem;
+            text-align: left;
+            font-weight: bold;
+        }
+
+        .answers-table td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--light-gray);
+            color: var(--text-light);
+        }
+
+        .answers-table tbody tr:hover {
+            background: var(--medium-gray);
+        }
+
+        .answers-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: bold;
+        }
+
+        .badge-student {
+            background: rgba(0, 123, 255, 0.2);
+            color: #007bff;
+            border: 1px solid #007bff;
+        }
+
+        .badge-staff {
+            background: rgba(40, 167, 69, 0.2);
+            color: #28a745;
+            border: 1px solid #28a745;
+        }
+
+        .answers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .answer-card {
+            background: var(--dark-gray);
+            border: 1px solid var(--light-gray);
+            border-left: 4px solid var(--orange);
+            border-radius: 8px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .answer-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(255, 140, 0, 0.3);
+            border-color: var(--orange);
+        }
+
+        .answer-card h3 {
+            color: var(--orange);
+            margin-bottom: 0.5rem;
+            font-size: 1.2rem;
+        }
+
+        .answer-card .meta {
+            color: var(--text-medium);
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        .answer-card .answers-list {
+            margin: 1rem 0;
+        }
+
+        .answer-item {
+            padding: 0.75rem;
+            margin: 0.5rem 0;
+            background: var(--darker-gray);
+            border-radius: 4px;
+            border-left: 3px solid var(--orange);
+        }
+
+        .answer-item strong {
+            color: var(--orange);
+            display: block;
+            margin-bottom: 0.25rem;
+        }
+
+        .answer-item span {
+            color: var(--text-light);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            overflow-y: auto;
+        }
+
+        .modal-content {
+            background: var(--dark-gray);
+            margin: 2% auto;
+            padding: 2rem;
+            border: 2px solid var(--orange);
+            border-radius: 8px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--orange);
+        }
+
+        .modal-header h2 {
+            color: var(--orange);
+            margin: 0;
+        }
+
+        .close {
+            color: var(--text-medium);
+            font-size: 2rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+
+        .close:hover {
+            color: var(--orange);
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            color: var(--orange);
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 0.75rem;
+            background: var(--darker-gray);
+            color: var(--text-light);
+            border: 1px solid var(--light-gray);
+            border-radius: 4px;
+            font-size: 1rem;
+            font-family: inherit;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--orange);
+        }
+
+        .answers-editor {
+            border: 1px solid var(--light-gray);
+            border-radius: 4px;
+            padding: 1rem;
+            background: var(--darker-gray);
+        }
+
+        .answer-field-item {
+            background: var(--medium-gray);
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 4px;
+            border-left: 3px solid var(--orange);
+        }
+
+        .answer-field-item label {
+            color: var(--orange);
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--text-medium);
+        }
+
+        .empty-state h3 {
+            color: var(--orange);
+            margin-bottom: 1rem;
+        }
+
+        .alert {
+            padding: 1rem;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+        }
+
+        .alert-success {
+            background: rgba(40, 167, 69, 0.2);
+            border: 1px solid #28a745;
+            color: #28a745;
+        }
+
+        .alert-error {
+            background: rgba(220, 53, 69, 0.2);
+            border: 1px solid #dc3545;
+            color: #dc3545;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-medium);
+        }
+
+        .view-toggle {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .view-toggle button {
+            padding: 0.5rem 1rem;
+            background: var(--medium-gray);
+            color: var(--text-light);
+            border: 1px solid var(--light-gray);
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .view-toggle button.active {
+            background: var(--orange);
+            color: var(--darker-gray);
+            border-color: var(--orange);
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <a href="index.html" class="logo">Transfinder Form Assistant</a>
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="forms.html">Forms</a></li>
+                <li><a href="form-answers.html">Form Answers</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="answers-container">
+        <div class="hero">
+            <h1>Form Answers</h1>
+            <p>View and manage submitted form answers</p>
+        </div>
+
+        <div id="alert-container"></div>
+
+        <div class="toolbar">
+            <div class="filter-group">
+                <label for="formFilter">Form:</label>
+                <select id="formFilter">
+                    <option value="">All Forms</option>
+                </select>
+                <label for="userTypeFilter">User Type:</label>
+                <select id="userTypeFilter">
+                    <option value="">All Types</option>
+                    <option value="student">Student</option>
+                    <option value="staff">Staff</option>
+                </select>
+                <label for="userIDFilter">User ID:</label>
+                <input type="text" id="userIDFilter" placeholder="Filter by user ID">
+            </div>
+            <button class="btn" onclick="openCreateModal()">+ Submit New Answer</button>
+        </div>
+
+        <div class="view-toggle">
+            <button class="active" onclick="setView('grid')">Grid View</button>
+            <button onclick="setView('table')">Table View</button>
+        </div>
+
+        <div id="loading" class="loading" style="display: none;">Loading answers...</div>
+        <div id="answers-grid" class="answers-grid"></div>
+        <table id="answers-table" class="answers-table" style="display: none;">
+            <thead>
+                <tr>
+                    <th>Form Name</th>
+                    <th>User ID</th>
+                    <th>User Type</th>
+                    <th>Submitted At</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="answers-table-body"></tbody>
+        </table>
+        <div id="empty-state" class="empty-state" style="display: none;">
+            <h3>No answers found</h3>
+            <p>Submit your first form answer to get started</p>
+        </div>
+    </div>
+
+    <!-- Create/Edit Modal -->
+    <div id="answerModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Submit New Answer</h2>
+                <span class="close" onclick="closeModal()">&times;</span>
+            </div>
+            <form id="answerForm" onsubmit="saveAnswer(event)">
+                <div class="form-group">
+                    <label for="answerFormID">Form Template *</label>
+                    <select id="answerFormID" required onchange="loadFormFields()">
+                        <option value="">Select a form...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="answerUserID">User ID *</label>
+                    <input type="text" id="answerUserID" required>
+                </div>
+                <div class="form-group">
+                    <label for="answerUserType">User Type *</label>
+                    <select id="answerUserType" required>
+                        <option value="">Select...</option>
+                        <option value="student">Student</option>
+                        <option value="staff">Staff</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Answers</label>
+                    <div id="answersEditor" class="answers-editor">
+                        <p style="color: var(--text-medium);">Select a form template to load fields</p>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button type="submit" class="btn">Save Answer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin;
+        let currentAnswerId = null;
+        let allAnswers = [];
+        let allForms = [];
+        let currentView = 'grid';
+
+        // Load data on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadForms();
+            loadAnswers();
+            document.getElementById('formFilter').addEventListener('change', filterAnswers);
+            document.getElementById('userTypeFilter').addEventListener('change', filterAnswers);
+            document.getElementById('userIDFilter').addEventListener('input', filterAnswers);
+        });
+
+        async function loadForms() {
+            try {
+                const response = await fetch(`${API_BASE}/api/forms/templates`);
+                if (!response.ok) throw new Error('Failed to load forms');
+                allForms = await response.json();
+                
+                const formSelect = document.getElementById('formFilter');
+                const answerFormSelect = document.getElementById('answerFormID');
+                
+                allForms.forEach(form => {
+                    const option1 = document.createElement('option');
+                    option1.value = form.id;
+                    option1.textContent = form.name;
+                    formSelect.appendChild(option1);
+                    
+                    const option2 = document.createElement('option');
+                    option2.value = form.id;
+                    option2.textContent = form.name;
+                    answerFormSelect.appendChild(option2);
+                });
+            } catch (error) {
+                showAlert('Error loading forms: ' + error.message, 'error');
+            }
+        }
+
+        async function loadAnswers() {
+            try {
+                document.getElementById('loading').style.display = 'block';
+                const response = await fetch(`${API_BASE}/api/forms/answers`);
+                if (!response.ok) throw new Error('Failed to load answers');
+                allAnswers = await response.json();
+                filterAnswers();
+            } catch (error) {
+                showAlert('Error loading answers: ' + error.message, 'error');
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        function filterAnswers() {
+            const formFilter = document.getElementById('formFilter').value;
+            const userTypeFilter = document.getElementById('userTypeFilter').value;
+            const userIDFilter = document.getElementById('userIDFilter').value.toLowerCase();
+            
+            let filtered = allAnswers;
+            
+            if (formFilter) {
+                filtered = filtered.filter(a => a.form_id === formFilter);
+            }
+            if (userTypeFilter) {
+                filtered = filtered.filter(a => a.user_type === userTypeFilter);
+            }
+            if (userIDFilter) {
+                filtered = filtered.filter(a => a.user_id.toLowerCase().includes(userIDFilter));
+            }
+            
+            renderAnswers(filtered);
+        }
+
+        function setView(view) {
+            currentView = view;
+            document.querySelectorAll('.view-toggle button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            const filtered = getFilteredAnswers();
+            renderAnswers(filtered);
+        }
+
+        function getFilteredAnswers() {
+            const formFilter = document.getElementById('formFilter').value;
+            const userTypeFilter = document.getElementById('userTypeFilter').value;
+            const userIDFilter = document.getElementById('userIDFilter').value.toLowerCase();
+            
+            let filtered = allAnswers;
+            
+            if (formFilter) {
+                filtered = filtered.filter(a => a.form_id === formFilter);
+            }
+            if (userTypeFilter) {
+                filtered = filtered.filter(a => a.user_type === userTypeFilter);
+            }
+            if (userIDFilter) {
+                filtered = filtered.filter(a => a.user_id.toLowerCase().includes(userIDFilter));
+            }
+            
+            return filtered;
+        }
+
+        function renderAnswers(answers) {
+            const grid = document.getElementById('answers-grid');
+            const table = document.getElementById('answers-table');
+            const tableBody = document.getElementById('answers-table-body');
+            const emptyState = document.getElementById('empty-state');
+            
+            if (answers.length === 0) {
+                grid.innerHTML = '';
+                tableBody.innerHTML = '';
+                emptyState.style.display = 'block';
+                return;
+            }
+
+            emptyState.style.display = 'none';
+
+            if (currentView === 'grid') {
+                table.style.display = 'none';
+                grid.style.display = 'grid';
+                grid.innerHTML = answers.map(answer => `
+                    <div class="answer-card">
+                        <h3>${escapeHtml(answer.form_name || 'Unknown Form')}</h3>
+                        <div class="meta">
+                            <span class="badge badge-${answer.user_type}">${answer.user_type}</span>
+                            <strong>User ID:</strong> ${escapeHtml(answer.user_id)} | 
+                            <strong>Submitted:</strong> ${formatDate(answer.submitted_at)}
+                        </div>
+                        <div class="answers-list">
+                            ${Object.entries(answer.answers || {}).map(([key, value]) => `
+                                <div class="answer-item">
+                                    <strong>${escapeHtml(key)}</strong>
+                                    <span>${escapeHtml(String(value))}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                            <button class="btn btn-secondary btn-small" onclick="editAnswer('${answer.id}')">Edit</button>
+                            <button class="btn btn-danger btn-small" onclick="deleteAnswer('${answer.id}')">Delete</button>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                grid.style.display = 'none';
+                table.style.display = 'table';
+                tableBody.innerHTML = answers.map(answer => `
+                    <tr>
+                        <td>${escapeHtml(answer.form_name || 'Unknown')}</td>
+                        <td>${escapeHtml(answer.user_id)}</td>
+                        <td><span class="badge badge-${answer.user_type}">${answer.user_type}</span></td>
+                        <td>${formatDate(answer.submitted_at)}</td>
+                        <td>
+                            <button class="btn btn-secondary btn-small" onclick="editAnswer('${answer.id}')">Edit</button>
+                            <button class="btn btn-danger btn-small" onclick="deleteAnswer('${answer.id}')">Delete</button>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+        }
+
+        function openCreateModal() {
+            currentAnswerId = null;
+            document.getElementById('modalTitle').textContent = 'Submit New Answer';
+            document.getElementById('answerForm').reset();
+            document.getElementById('answersEditor').innerHTML = '<p style="color: var(--text-medium);">Select a form template to load fields</p>';
+            document.getElementById('answerModal').style.display = 'block';
+        }
+
+        async function loadFormFields() {
+            const formID = document.getElementById('answerFormID').value;
+            if (!formID) {
+                document.getElementById('answersEditor').innerHTML = '<p style="color: var(--text-medium);">Select a form template to load fields</p>';
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/api/forms/templates/${formID}`);
+                if (!response.ok) throw new Error('Failed to load form');
+                const form = await response.json();
+                
+                const editor = document.getElementById('answersEditor');
+                editor.innerHTML = '';
+                
+                (form.fields || []).forEach(field => {
+                    const fieldDiv = document.createElement('div');
+                    fieldDiv.className = 'answer-field-item';
+                    
+                    let inputHTML = '';
+                    if (field.type === 'select' && field.options && field.options.length > 0) {
+                        inputHTML = `<select class="answer-field" data-field="${escapeHtml(field.name)}" ${field.required ? 'required' : ''}>
+                            <option value="">Select...</option>
+                            ${field.options.map(opt => `<option value="${escapeHtml(opt)}">${escapeHtml(opt)}</option>`).join('')}
+                        </select>`;
+                    } else {
+                        const inputType = field.type === 'number' ? 'number' : 
+                                         field.type === 'email' ? 'email' : 
+                                         field.type === 'tel' ? 'tel' : 
+                                         field.type === 'date' ? 'date' : 'text';
+                        inputHTML = `<input type="${inputType}" class="answer-field" data-field="${escapeHtml(field.name)}" 
+                            placeholder="${escapeHtml(field.placeholder || '')}" ${field.required ? 'required' : ''}>`;
+                    }
+                    
+                    fieldDiv.innerHTML = `
+                        <label>${escapeHtml(field.label)} ${field.required ? '<span style="color: #dc3545;">*</span>' : ''}</label>
+                        ${inputHTML}
+                    `;
+                    editor.appendChild(fieldDiv);
+                });
+            } catch (error) {
+                showAlert('Error loading form fields: ' + error.message, 'error');
+            }
+        }
+
+        async function editAnswer(id) {
+            try {
+                const response = await fetch(`${API_BASE}/api/forms/answers/${id}`);
+                if (!response.ok) throw new Error('Failed to load answer');
+                const answer = await response.json();
+                
+                currentAnswerId = id;
+                document.getElementById('modalTitle').textContent = 'Edit Answer';
+                document.getElementById('answerFormID').value = answer.form_id;
+                document.getElementById('answerUserID').value = answer.user_id;
+                document.getElementById('answerUserType').value = answer.user_type;
+                
+                await loadFormFields();
+                
+                // Set field values after a short delay to ensure fields are loaded
+                setTimeout(() => {
+                    Object.entries(answer.answers || {}).forEach(([key, value]) => {
+                        const input = document.querySelector(`.answer-field[data-field="${key}"]`);
+                        if (input) {
+                            input.value = value;
+                        }
+                    });
+                }, 100);
+                
+                document.getElementById('answerModal').style.display = 'block';
+            } catch (error) {
+                showAlert('Error loading answer: ' + error.message, 'error');
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('answerModal').style.display = 'none';
+            currentAnswerId = null;
+        }
+
+        async function saveAnswer(event) {
+            event.preventDefault();
+            
+            const answers = {};
+            const fields = document.querySelectorAll('.answer-field');
+            fields.forEach(field => {
+                const fieldName = field.getAttribute('data-field');
+                if (fieldName && field.value) {
+                    answers[fieldName] = field.value;
+                }
+            });
+
+            const answerData = {
+                form_id: document.getElementById('answerFormID').value,
+                user_id: document.getElementById('answerUserID').value.trim(),
+                user_type: document.getElementById('answerUserType').value,
+                answers: answers
+            };
+
+            try {
+                const url = currentAnswerId 
+                    ? `${API_BASE}/api/forms/answers/${currentAnswerId}`
+                    : `${API_BASE}/api/forms/answers`;
+                const method = currentAnswerId ? 'PUT' : 'POST';
+                
+                const response = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(answerData)
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to save answer');
+                }
+
+                showAlert('Answer saved successfully!', 'success');
+                closeModal();
+                loadAnswers();
+            } catch (error) {
+                showAlert('Error saving answer: ' + error.message, 'error');
+            }
+        }
+
+        async function deleteAnswer(id) {
+            if (!confirm('Are you sure you want to delete this answer?')) return;
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/forms/answers/${id}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) throw new Error('Failed to delete answer');
+                
+                showAlert('Answer deleted successfully!', 'success');
+                loadAnswers();
+            } catch (error) {
+                showAlert('Error deleting answer: ' + error.message, 'error');
+            }
+        }
+
+        function showAlert(message, type) {
+            const container = document.getElementById('alert-container');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            container.appendChild(alert);
+            
+            setTimeout(() => {
+                alert.remove();
+            }, 5000);
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return 'N/A';
+            try {
+                return new Date(dateString).toLocaleString();
+            } catch {
+                return dateString;
+            }
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('answerModal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        }
+    </script>
+</body>
+</html>

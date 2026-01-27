@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Form Management - Transfinder Form Assistant</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .forms-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding: 1rem;
+            background: var(--dark-gray);
+            border-radius: 8px;
+            border: 1px solid var(--light-gray);
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            background: var(--orange);
+            color: var(--darker-gray);
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            font-size: 1rem;
+        }
+
+        .btn:hover {
+            background: var(--orange-light);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(255, 140, 0, 0.3);
+        }
+
+        .btn-secondary {
+            background: var(--medium-gray);
+            color: var(--text-light);
+        }
+
+        .btn-secondary:hover {
+            background: var(--light-gray);
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .btn-small {
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+        }
+
+        .filter-group {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .filter-group select {
+            padding: 0.5rem 1rem;
+            background: var(--medium-gray);
+            color: var(--text-light);
+            border: 1px solid var(--light-gray);
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+
+        .forms-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .form-card {
+            background: var(--dark-gray);
+            border: 1px solid var(--light-gray);
+            border-left: 4px solid var(--orange);
+            border-radius: 8px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(255, 140, 0, 0.3);
+            border-color: var(--orange);
+        }
+
+        .form-card h3 {
+            color: var(--orange);
+            margin-bottom: 0.5rem;
+            font-size: 1.3rem;
+        }
+
+        .form-card .meta {
+            color: var(--text-medium);
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        .form-card .fields-preview {
+            margin: 1rem 0;
+            padding: 1rem;
+            background: var(--darker-gray);
+            border-radius: 4px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        .form-card .fields-preview .field-tag {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            margin: 0.25rem;
+            background: var(--medium-gray);
+            border-radius: 4px;
+            font-size: 0.85rem;
+            color: var(--text-light);
+        }
+
+        .form-card .actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            overflow-y: auto;
+        }
+
+        .modal-content {
+            background: var(--dark-gray);
+            margin: 2% auto;
+            padding: 2rem;
+            border: 2px solid var(--orange);
+            border-radius: 8px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--orange);
+        }
+
+        .modal-header h2 {
+            color: var(--orange);
+            margin: 0;
+        }
+
+        .close {
+            color: var(--text-medium);
+            font-size: 2rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+
+        .close:hover {
+            color: var(--orange);
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            color: var(--orange);
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 0.75rem;
+            background: var(--darker-gray);
+            color: var(--text-light);
+            border: 1px solid var(--light-gray);
+            border-radius: 4px;
+            font-size: 1rem;
+            font-family: inherit;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--orange);
+        }
+
+        .form-group textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .fields-editor {
+            border: 1px solid var(--light-gray);
+            border-radius: 4px;
+            padding: 1rem;
+            background: var(--darker-gray);
+        }
+
+        .field-item {
+            background: var(--medium-gray);
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 4px;
+            border-left: 3px solid var(--orange);
+        }
+
+        .field-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .field-item-header h4 {
+            color: var(--orange);
+            margin: 0;
+        }
+
+        .field-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .field-row.full {
+            grid-template-columns: 1fr;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--text-medium);
+        }
+
+        .empty-state h3 {
+            color: var(--orange);
+            margin-bottom: 1rem;
+        }
+
+        .alert {
+            padding: 1rem;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+        }
+
+        .alert-success {
+            background: rgba(40, 167, 69, 0.2);
+            border: 1px solid #28a745;
+            color: #28a745;
+        }
+
+        .alert-error {
+            background: rgba(220, 53, 69, 0.2);
+            border: 1px solid #dc3545;
+            color: #dc3545;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-medium);
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <a href="index.html" class="logo">Transfinder Form Assistant</a>
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="forms.html">Forms</a></li>
+                <li><a href="form-answers.html">Form Answers</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="forms-container">
+        <div class="hero">
+            <h1>Form Management</h1>
+            <p>Create and manage form templates for students and staff</p>
+        </div>
+
+        <div id="alert-container"></div>
+
+        <div class="toolbar">
+            <div class="filter-group">
+                <label for="userTypeFilter" style="color: var(--text-light);">Filter:</label>
+                <select id="userTypeFilter">
+                    <option value="">All Types</option>
+                    <option value="student">Student Forms</option>
+                    <option value="staff">Staff Forms</option>
+                </select>
+            </div>
+            <button class="btn" onclick="openCreateModal()">+ Create New Form</button>
+        </div>
+
+        <div id="loading" class="loading" style="display: none;">Loading forms...</div>
+        <div id="forms-grid" class="forms-grid"></div>
+        <div id="empty-state" class="empty-state" style="display: none;">
+            <h3>No forms found</h3>
+            <p>Create your first form template to get started</p>
+        </div>
+    </div>
+
+    <!-- Create/Edit Modal -->
+    <div id="formModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Create New Form</h2>
+                <span class="close" onclick="closeModal()">&times;</span>
+            </div>
+            <form id="formForm" onsubmit="saveForm(event)">
+                <div class="form-group">
+                    <label for="formName">Form Name *</label>
+                    <input type="text" id="formName" required>
+                </div>
+                <div class="form-group">
+                    <label for="formDescription">Description</label>
+                    <textarea id="formDescription"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="formUserType">User Type *</label>
+                    <select id="formUserType" required>
+                        <option value="">Select...</option>
+                        <option value="student">Student</option>
+                        <option value="staff">Staff</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Form Fields</label>
+                    <div id="fieldsEditor" class="fields-editor">
+                        <div id="fieldsList"></div>
+                        <button type="button" class="btn btn-secondary btn-small" onclick="addField()">+ Add Field</button>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button type="submit" class="btn">Save Form</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin;
+        let currentFormId = null;
+        let allForms = [];
+
+        // Load forms on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadForms();
+            document.getElementById('userTypeFilter').addEventListener('change', filterForms);
+        });
+
+        async function loadForms() {
+            try {
+                document.getElementById('loading').style.display = 'block';
+                const response = await fetch(`${API_BASE}/api/forms/templates`);
+                if (!response.ok) throw new Error('Failed to load forms');
+                allForms = await response.json();
+                renderForms(allForms);
+            } catch (error) {
+                showAlert('Error loading forms: ' + error.message, 'error');
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        function filterForms() {
+            const filter = document.getElementById('userTypeFilter').value;
+            const filtered = filter ? allForms.filter(f => f.user_type === filter) : allForms;
+            renderForms(filtered);
+        }
+
+        function renderForms(forms) {
+            const grid = document.getElementById('forms-grid');
+            const emptyState = document.getElementById('empty-state');
+            
+            if (forms.length === 0) {
+                grid.innerHTML = '';
+                emptyState.style.display = 'block';
+                return;
+            }
+
+            emptyState.style.display = 'none';
+            grid.innerHTML = forms.map(form => `
+                <div class="form-card">
+                    <h3>${escapeHtml(form.name)}</h3>
+                    <div class="meta">
+                        <strong>Type:</strong> ${form.user_type} | 
+                        <strong>Fields:</strong> ${form.fields?.length || 0} | 
+                        <strong>Created:</strong> ${formatDate(form.created_at)}
+                    </div>
+                    ${form.description ? `<p style="color: var(--text-medium); margin: 0.5rem 0;">${escapeHtml(form.description)}</p>` : ''}
+                    <div class="fields-preview">
+                        ${form.fields?.map(f => `<span class="field-tag">${escapeHtml(f.label || f.name)}</span>`).join('') || '<span class="field-tag">No fields</span>'}
+                    </div>
+                    <div class="actions">
+                        <button class="btn btn-secondary btn-small" onclick="editForm('${form.id}')">Edit</button>
+                        <button class="btn btn-danger btn-small" onclick="deleteForm('${form.id}')">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function openCreateModal() {
+            currentFormId = null;
+            document.getElementById('modalTitle').textContent = 'Create New Form';
+            document.getElementById('formForm').reset();
+            document.getElementById('fieldsList').innerHTML = '';
+            document.getElementById('formModal').style.display = 'block';
+        }
+
+        async function editForm(id) {
+            try {
+                const response = await fetch(`${API_BASE}/api/forms/templates/${id}`);
+                if (!response.ok) throw new Error('Failed to load form');
+                const form = await response.json();
+                
+                currentFormId = id;
+                document.getElementById('modalTitle').textContent = 'Edit Form';
+                document.getElementById('formName').value = form.name;
+                document.getElementById('formDescription').value = form.description || '';
+                document.getElementById('formUserType').value = form.user_type;
+                
+                document.getElementById('fieldsList').innerHTML = '';
+                (form.fields || []).forEach((field, index) => {
+                    addField(field);
+                });
+                
+                document.getElementById('formModal').style.display = 'block';
+            } catch (error) {
+                showAlert('Error loading form: ' + error.message, 'error');
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('formModal').style.display = 'none';
+            currentFormId = null;
+        }
+
+        function addField(fieldData = null) {
+            const fieldsList = document.getElementById('fieldsList');
+            const fieldIndex = fieldsList.children.length;
+            const field = fieldData || {
+                name: '',
+                label: '',
+                type: 'text',
+                required: false,
+                placeholder: '',
+                options: []
+            };
+
+            const fieldDiv = document.createElement('div');
+            fieldDiv.className = 'field-item';
+            fieldDiv.innerHTML = `
+                <div class="field-item-header">
+                    <h4>Field ${fieldIndex + 1}</h4>
+                    <button type="button" class="btn btn-danger btn-small" onclick="removeField(this)">Remove</button>
+                </div>
+                <div class="field-row">
+                    <div class="form-group">
+                        <label>Field Name (ID) *</label>
+                        <input type="text" class="field-name" value="${escapeHtml(field.name)}" required placeholder="e.g., name, age">
+                    </div>
+                    <div class="form-group">
+                        <label>Label *</label>
+                        <input type="text" class="field-label" value="${escapeHtml(field.label)}" required placeholder="e.g., Full Name">
+                    </div>
+                </div>
+                <div class="field-row">
+                    <div class="form-group">
+                        <label>Type *</label>
+                        <select class="field-type" onchange="updateFieldType(this)" required>
+                            <option value="text" ${field.type === 'text' ? 'selected' : ''}>Text</option>
+                            <option value="email" ${field.type === 'email' ? 'selected' : ''}>Email</option>
+                            <option value="number" ${field.type === 'number' ? 'selected' : ''}>Number</option>
+                            <option value="tel" ${field.type === 'tel' ? 'selected' : ''}>Phone</option>
+                            <option value="date" ${field.type === 'date' ? 'selected' : ''}>Date</option>
+                            <option value="select" ${field.type === 'select' ? 'selected' : ''}>Select</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Placeholder</label>
+                        <input type="text" class="field-placeholder" value="${escapeHtml(field.placeholder || '')}" placeholder="Placeholder text">
+                    </div>
+                </div>
+                <div class="field-row">
+                    <div class="form-group checkbox-group">
+                        <input type="checkbox" class="field-required" ${field.required ? 'checked' : ''}>
+                        <label>Required Field</label>
+                    </div>
+                </div>
+                <div class="field-row full field-options-row" style="display: ${field.type === 'select' ? 'block' : 'none'};">
+                    <div class="form-group">
+                        <label>Options (comma-separated)</label>
+                        <input type="text" class="field-options" value="${(field.options || []).join(', ')}" placeholder="Option 1, Option 2, Option 3">
+                    </div>
+                </div>
+            `;
+            fieldsList.appendChild(fieldDiv);
+        }
+
+        function updateFieldType(select) {
+            const fieldItem = select.closest('.field-item');
+            const optionsRow = fieldItem.querySelector('.field-options-row');
+            optionsRow.style.display = select.value === 'select' ? 'block' : 'none';
+        }
+
+        function removeField(button) {
+            button.closest('.field-item').remove();
+        }
+
+        async function saveForm(event) {
+            event.preventDefault();
+            
+            const fields = [];
+            const fieldItems = document.querySelectorAll('.field-item');
+            
+            fieldItems.forEach(item => {
+                const name = item.querySelector('.field-name').value.trim();
+                const label = item.querySelector('.field-label').value.trim();
+                const type = item.querySelector('.field-type').value;
+                const placeholder = item.querySelector('.field-placeholder').value.trim();
+                const required = item.querySelector('.field-required').checked;
+                const optionsText = item.querySelector('.field-options').value.trim();
+                
+                if (!name || !label) return;
+                
+                const field = {
+                    name,
+                    label,
+                    type,
+                    required,
+                    placeholder: placeholder || undefined
+                };
+                
+                if (type === 'select' && optionsText) {
+                    field.options = optionsText.split(',').map(o => o.trim()).filter(o => o);
+                }
+                
+                fields.push(field);
+            });
+
+            const formData = {
+                name: document.getElementById('formName').value.trim(),
+                description: document.getElementById('formDescription').value.trim(),
+                user_type: document.getElementById('formUserType').value,
+                fields: fields
+            };
+
+            try {
+                const url = currentFormId 
+                    ? `${API_BASE}/api/forms/templates/${currentFormId}`
+                    : `${API_BASE}/api/forms/templates`;
+                const method = currentFormId ? 'PUT' : 'POST';
+                
+                const response = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to save form');
+                }
+
+                showAlert('Form saved successfully!', 'success');
+                closeModal();
+                loadForms();
+            } catch (error) {
+                showAlert('Error saving form: ' + error.message, 'error');
+            }
+        }
+
+        async function deleteForm(id) {
+            if (!confirm('Are you sure you want to delete this form?')) return;
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/forms/templates/${id}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) throw new Error('Failed to delete form');
+                
+                showAlert('Form deleted successfully!', 'success');
+                loadForms();
+            } catch (error) {
+                showAlert('Error deleting form: ' + error.message, 'error');
+            }
+        }
+
+        function showAlert(message, type) {
+            const container = document.getElementById('alert-container');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            container.appendChild(alert);
+            
+            setTimeout(() => {
+                alert.remove();
+            }, 5000);
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return 'N/A';
+            try {
+                return new Date(dateString).toLocaleDateString();
+            } catch {
+                return dateString;
+            }
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('formModal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        }
+    </script>
+</body>
+</html>

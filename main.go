@@ -119,6 +119,30 @@ func main() {
 	})
 	r.GET("/products/:filename", h.ServeProductHandler)
 
+	// Form system routes
+	// Form templates
+	r.GET("/api/forms/templates", h.ListFormTemplatesHandler)
+	r.GET("/api/forms/templates/:id", h.GetFormTemplateHandler)
+	r.POST("/api/forms/templates", h.CreateFormTemplateHandler)
+	r.PUT("/api/forms/templates/:id", h.UpdateFormTemplateHandler)
+	r.DELETE("/api/forms/templates/:id", h.DeleteFormTemplateHandler)
+	
+	// Form answers
+	r.GET("/api/forms/answers", h.ListFormAnswersHandler)
+	r.GET("/api/forms/answers/:id", h.GetFormAnswerHandler)
+	r.POST("/api/forms/answers", h.CreateFormAnswerHandler)
+	r.PUT("/api/forms/answers/:id", h.UpdateFormAnswerHandler)
+	r.DELETE("/api/forms/answers/:id", h.DeleteFormAnswerHandler)
+	
+	// Serve form management UI
+	r.Static("/presentation", "./presentation")
+	r.GET("/forms", func(c *gin.Context) {
+		c.File("./presentation/forms.html")
+	})
+	r.GET("/form-answers", func(c *gin.Context) {
+		c.File("./presentation/form-answers.html")
+	})
+
 	// Serve static files (for React app)
 	r.Static("/static", "./frontend/build/static")
 	r.StaticFile("/", "./frontend/build/index.html")

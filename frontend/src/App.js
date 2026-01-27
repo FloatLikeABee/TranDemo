@@ -926,6 +926,17 @@ function App() {
             }]);
           }}
         />
+
+        {/* Floating Form Management Button */}
+        <a
+          href="/forms"
+          className="floating-form-button"
+          title="Manage Forms & Answers"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          📝
+        </a>
       </div>
     </div>
   );
