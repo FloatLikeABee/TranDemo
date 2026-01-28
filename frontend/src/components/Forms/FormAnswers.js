@@ -43,7 +43,7 @@ const FormAnswers = () => {
   const loadForms = async () => {
     try {
       const data = await getFormTemplates();
-      setForms(data);
+      setForms(Array.isArray(data) ? data : []);
     } catch (error) {
       showAlert('Error loading forms: ' + (error.response?.data?.error || error.message), 'error');
     }
@@ -247,7 +247,7 @@ const FormAnswers = () => {
               onChange={(e) => setFormFilter(e.target.value)}
             >
               <option value="">All Forms</option>
-              {forms.map(form => (
+              {(forms || []).map(form => (
                 <option key={form.id} value={form.id}>{form.name}</option>
               ))}
             </select>
@@ -403,7 +403,7 @@ const FormAnswers = () => {
                   required
                 >
                   <option value="">Select a form...</option>
-                  {forms.map(form => (
+                  {(forms || []).map(form => (
                     <option key={form.id} value={form.id}>{form.name}</option>
                   ))}
                 </select>
