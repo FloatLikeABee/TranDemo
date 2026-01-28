@@ -53,7 +53,8 @@ const FormAnswers = () => {
     try {
       setLoading(true);
       const data = await getFormAnswers();
-      setAnswers(data);
+      // Ensure we always work with an array to avoid null/undefined issues
+      setAnswers(Array.isArray(data) ? data : (data ? [data] : []));
     } catch (error) {
       showAlert('Error loading answers: ' + (error.response?.data?.error || error.message), 'error');
     } finally {
@@ -62,7 +63,8 @@ const FormAnswers = () => {
   };
 
   const filterAnswers = () => {
-    let filtered = answers;
+    // Start from a safe array value
+    let filtered = Array.isArray(answers) ? answers : [];
     
     if (formFilter) {
       filtered = filtered.filter(a => a.form_id === formFilter);
@@ -76,7 +78,8 @@ const FormAnswers = () => {
       );
     }
     
-    setFilteredAnswers(filtered);
+    // Make sure filteredAnswers is never null
+    setFilteredAnswers(Array.isArray(filtered) ? filtered : []);
   };
 
   const showAlert = (message, type) => {
@@ -92,11 +95,12 @@ const FormAnswers = () => {
 
     try {
       const form = await getFormTemplate(formId);
-      setSelectedFormFields(form.fields || []);
+      const fields = Array.isArray(form?.fields) ? form.fields : [];
+      setSelectedFormFields(fields);
       
       // Initialize answer data with empty values for each field
       const initialAnswers = {};
-      form.fields.forEach(field => {
+      fields.forEach(field => {
         initialAnswers[field.name] = '';
       });
       setAnswerData(prev => ({

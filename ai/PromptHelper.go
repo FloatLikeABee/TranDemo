@@ -204,7 +204,8 @@ You have a conversation so far. Based on the full conversation and the latest us
 
 Rules:
 - Output ONLY valid JSON. No markdown, no code fences, no explanation.
-- For "ask", be concise and ask for one or two missing items at a time.`
+- For "ask", be concise and ask for one or two missing items at a time.
+- Infer obvious field values from the user's wording. For example, if the user talks about the student using male pronouns like "he", "his", or phrases like "he's 13", then set any gender/sex field to "male". If they use female pronouns like "she", "her", or "she's 13", set it to "female". Only leave a gender/sex field empty if the conversation truly gives no clear indication.`
 	var convBuilder strings.Builder
 	for _, t := range conversationHistory {
 		convBuilder.WriteString(fmt.Sprintf("%s: %s\n", t.Role, t.Content))
