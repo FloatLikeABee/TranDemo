@@ -7,9 +7,18 @@ type ChatRequest struct {
 }
 
 type ChatResponse struct {
-	Response string `json:"response"`
-	SQL      string `json:"sql,omitempty"`
-	FormJSON string `json:"form_json,omitempty"`
+	Response        string                       `json:"response"`
+	SQL             string                       `json:"sql,omitempty"`
+	FormJSON        string                       `json:"form_json,omitempty"`
+	ConfirmationCard *RegistrationConfirmationCard `json:"confirmation_card,omitempty"`
+}
+
+// RegistrationConfirmationCard is sent so the chat UI can show a review card before submitting.
+type RegistrationConfirmationCard struct {
+	FormName  string                   `json:"form_name"`
+	UserType  string                   `json:"user_type"`
+	Answers   map[string]interface{}   `json:"answers"`
+	Fields    []FormField              `json:"fields"` // name + label for display
 }
 
 type SQLFile struct {

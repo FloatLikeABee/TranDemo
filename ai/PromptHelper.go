@@ -1,6 +1,7 @@
 package ai
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -213,5 +214,39 @@ Rules:
 	convBuilder.WriteString("user: " + latestUserMessage)
 	conversationForModel = convBuilder.String()
 	return systemPrompt, conversationForModel
+}
+
+// BuildFieldGatheringPromptWithCurrent builds a prompt for updating existing answers (confirmation-edit flow).
+// The model should merge the user's change request into currentAnswers and return complete JSON or ask.
+func BuildFieldGatheringPromptWithCurrent(formFields []models.FormField, currentAnswers map[string]interface{}, userMessage string) (systemPrompt string, userPrompt string) {
+	var fieldsDesc strings.Builder
+	for _, f := range formFields {
+		req := ""
+		if f.Required {
+			req = " (required)"
+		}
+		fieldsDesc.WriteString(fmt.Sprintf("- %s (field name: %s)%s\n", f.Label, f.Name, req))
+	}
+	var currentJSON string
+	if len(currentAnswers) > 0 {
+		b, _ := json.Marshal(currentAnswers)
+		currentJSON = string(b)
+	} else {
+		currentJSON = "{}"
+	}
+	systemPrompt = `You are a form-filling assistant. The user has already provided the following values and is now requesting a change. Merge their request into the current values.
+
+Form fields:
+` + fieldsDesc.String() + `
+
+Current values (JSON): ` + currentJSON + `
+
+Rules:
+- Reply with ONLY valid JSON. No markdown, no code fences, no explanation.
+- If you can apply the user's change and have ALL required fields filled, reply: {"complete":true,"answers":{...}} with every field name as key and the updated value. Use existing values for any field not being changed.
+- If you need clarification, reply: {"complete":false,"ask":"A short question."}
+- Use the exact field names as keys.`
+	userPrompt = "User says: " + userMessage
+	return systemPrompt, userPrompt
 }
 

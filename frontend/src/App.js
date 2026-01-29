@@ -434,11 +434,13 @@ function App() {
             }).then(response => {
               const aiResponse = response.data.response;
               const sql = response.data.sql;
+              const confirmationCard = response.data.confirmation_card || null;
 
               setMessages(prev => [...prev, {
                 type: 'assistant',
                 content: aiResponse,
-                sql: sql
+                sql: sql,
+                confirmationCard: confirmationCard
               }]);
             }).catch(error => {
               console.error('Error:', error);
@@ -504,11 +506,13 @@ function App() {
 
       const aiResponse = response.data.response;
       const sql = response.data.sql;
+      const confirmationCard = response.data.confirmation_card || null;
 
       setMessages(prev => [...prev, {
         type: 'assistant',
         content: aiResponse,
-        sql: sql
+        sql: sql,
+        confirmationCard: confirmationCard
       }]);
     } catch (error) {
       console.error('Error:', error);
@@ -820,6 +824,49 @@ function App() {
                 {msg.type === 'assistant' && (
                   <div className="message-bubble assistant-bubble">
                     <div className="response-text">{msg.content.replace(/Here's the SQL query based on your request:\n\n/g, '')}</div>
+                    {msg.confirmationCard && (
+                      <div className="registration-confirmation-card">
+                        <h3 className="confirmation-card-title">{msg.confirmationCard.form_name}</h3>
+                        <span className={`confirmation-card-badge badge-${msg.confirmationCard.user_type || 'student'}`}>
+                          {msg.confirmationCard.user_type || 'student'}
+                        </span>
+                        <div className="confirmation-card-fields">
+                          {(msg.confirmationCard.fields && msg.confirmationCard.fields.length > 0
+                            ? msg.confirmationCard.fields
+                            : Object.keys(msg.confirmationCard.answers || {}).map(name => ({ name, label: name }))
+                          ).map((field, idx) => {
+                            const value = (msg.confirmationCard.answers || {})[field.name];
+                            if (value === undefined || value === null || value === '') return null;
+                            const label = field.label || field.name;
+                            return (
+                              <div key={idx} className="confirmation-card-row">
+                                <span className="confirmation-card-label">{label}:</span>
+                                <span className="confirmation-card-value">{String(value)}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <div className="confirmation-card-actions">
+                          <button
+                            type="button"
+                            className="confirmation-card-btn confirm-btn"
+                            onClick={() => sendMessage('confirm')}
+                          >
+                            Confirm & submit
+                          </button>
+                          <button
+                            type="button"
+                            className="confirmation-card-btn edit-btn"
+                            onClick={() => {
+                              sendMessage('I\'d like to change something');
+                              setTimeout(() => inputRef.current?.focus(), 100);
+                            }}
+                          >
+                            Edit
+                          </button>
+                        </div>
+                      </div>
+                    )}
                     {msg.sql && (
                       <div className="sql-block">
                         <div className="sql-header">

@@ -522,3 +522,13 @@ func (a *AIService) RegistrationFieldGathering(ctx context.Context, conversation
 	}
 	return a.callDashScopeAPI(ctx, messages)
 }
+
+// RegistrationFieldGatheringWithCurrent merges the user's change request into current answers (confirmation-edit flow).
+func (a *AIService) RegistrationFieldGatheringWithCurrent(ctx context.Context, formFields []models.FormField, currentAnswers map[string]interface{}, userMessage string) (string, error) {
+	sys, user := BuildFieldGatheringPromptWithCurrent(formFields, currentAnswers, userMessage)
+	messages := []DashScopeMessage{
+		{Role: "system", Content: sys},
+		{Role: "user", Content: user},
+	}
+	return a.callDashScopeAPI(ctx, messages)
+}

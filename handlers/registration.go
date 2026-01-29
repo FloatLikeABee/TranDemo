@@ -97,9 +97,100 @@ func extractFormName(modelReply string, formNames []string) string {
 	return ""
 }
 
+func isConfirmationMessage(message string) bool {
+	s := strings.TrimSpace(strings.ToLower(message))
+	if s == "" {
+		return false
+	}
+	confirmPhrases := []string{"confirm", "yes", "looks good", "submit", "correct", "that's right", "ok", "okay", "good", "perfect", "go ahead", "do it", "all good", "confirmed", "submit it", "submit the form"}
+	for _, p := range confirmPhrases {
+		if s == p || strings.HasPrefix(s, p+" ") || strings.HasSuffix(s, " "+p) {
+			return true
+		}
+	}
+	return false
+}
+
+func (h *Handlers) buildConfirmationCard(formName, userType string, answers map[string]interface{}, fields []models.FormField) *models.RegistrationConfirmationCard {
+	if answers == nil {
+		answers = make(map[string]interface{})
+	}
+	return &models.RegistrationConfirmationCard{
+		FormName: formName,
+		UserType: userType,
+		Answers:  answers,
+		Fields:   fields,
+	}
+}
+
 func (h *Handlers) handleRegistrationFlow(c *gin.Context, userID, userMessage string) (*models.ChatResponse, error) {
 	ctx := context.Background()
 	state, _ := h.db.GetRegistrationStateByUserID(userID)
+
+	// If we are pending confirmation: user must confirm or request changes
+	if state != nil && state.Step == "pending_confirmation" && state.FormID != "" {
+		if isConfirmationMessage(userMessage) {
+			submitterID := c.GetHeader("X-User-ID")
+			if submitterID == "" {
+				submitterID = "admin"
+			}
+			userIDForAnswer := ""
+			for _, k := range []string{"user_id", "student_id", "staff_number", "id", "name"} {
+				if v, ok := state.GatheredAnswers[k]; ok {
+					if s, ok := v.(string); ok && s != "" {
+						userIDForAnswer = s
+						break
+					}
+				}
+			}
+			if userIDForAnswer == "" {
+				userIDForAnswer = submitterID
+			}
+			fa := &models.FormAnswer{
+				ID:          uuid.New().String(),
+				FormID:      state.FormID,
+				FormName:    state.FormName,
+				UserID:      userIDForAnswer,
+				UserType:    state.UserType,
+				Answers:     state.GatheredAnswers,
+				SubmittedAt: time.Now().Format(time.RFC3339),
+				SubmittedBy: submitterID,
+			}
+			if err := h.db.StoreFormAnswer(fa); err != nil {
+				log.Printf("[REG] Store form answer error: %v", err)
+				return nil, fmt.Errorf("failed to save registration: %w", err)
+			}
+			h.db.DeleteRegistrationState(userID)
+			return &models.ChatResponse{
+				Response: fmt.Sprintf("Registration complete. Your **%s** has been submitted. You can view it under Form Answers.", state.FormName),
+			}, nil
+		}
+		// User wants to change something: re-run gathering with current answers as context
+		form, err := h.db.GetFormTemplate(state.FormID)
+		if err != nil || form == nil {
+			h.db.DeleteRegistrationState(userID)
+			return &models.ChatResponse{Response: "That form is no longer available. You can start again by saying you want to register a student."}, nil
+		}
+		reply, err := h.aiService.RegistrationFieldGatheringWithCurrent(ctx, form.Fields, state.GatheredAnswers, userMessage)
+		if err != nil {
+			log.Printf("[REG] AI field update error: %v", err)
+			return nil, fmt.Errorf("registration AI error: %w", err)
+		}
+		complete, answers, ask := parseGatheringResponse(reply)
+		if complete && len(answers) > 0 {
+			state.Step = "pending_confirmation"
+			state.GatheredAnswers = answers
+			_ = h.db.StoreRegistrationState(userID, state)
+			return &models.ChatResponse{
+				Response:          "I've updated the details. Please review the card below and reply **Confirm** to submit, or tell me what you'd like to change.",
+				ConfirmationCard:  h.buildConfirmationCard(state.FormName, state.UserType, answers, form.Fields),
+			}, nil
+		}
+		if ask != "" {
+			return &models.ChatResponse{Response: ask}, nil
+		}
+		return &models.ChatResponse{Response: "What would you like to change? Tell me the field and the new value."}, nil
+	}
 
 	// If we have an active session (gathering_fields), continue it
 	if state != nil && state.Step == "gathering_fields" && state.FormID != "" {
@@ -119,41 +210,12 @@ func (h *Handlers) handleRegistrationFlow(c *gin.Context, userID, userMessage st
 
 		complete, answers, ask := parseGatheringResponse(reply)
 		if complete && len(answers) > 0 {
-			// Resolve user_id for the form answer
-			submitterID := c.GetHeader("X-User-ID")
-			if submitterID == "" {
-				submitterID = "admin"
-			}
-			userIDForAnswer := ""
-			for _, k := range []string{"user_id", "student_id", "staff_number", "id", "name"} {
-				if v, ok := answers[k]; ok {
-					if s, ok := v.(string); ok && s != "" {
-						userIDForAnswer = s
-						break
-					}
-				}
-			}
-			if userIDForAnswer == "" {
-				userIDForAnswer = submitterID
-			}
-
-			fa := &models.FormAnswer{
-				ID:          uuid.New().String(),
-				FormID:      state.FormID,
-				FormName:    state.FormName,
-				UserID:      userIDForAnswer,
-				UserType:    state.UserType,
-				Answers:     answers,
-				SubmittedAt: time.Now().Format(time.RFC3339),
-				SubmittedBy: submitterID,
-			}
-			if err := h.db.StoreFormAnswer(fa); err != nil {
-				log.Printf("[REG] Store form answer error: %v", err)
-				return nil, fmt.Errorf("failed to save registration: %w", err)
-			}
-			h.db.DeleteRegistrationState(userID)
+			state.Step = "pending_confirmation"
+			state.GatheredAnswers = answers
+			_ = h.db.StoreRegistrationState(userID, state)
 			return &models.ChatResponse{
-				Response: fmt.Sprintf("Registration complete. Your **%s** response has been saved. You can view it under Form Answers.", state.FormName),
+				Response:          "Please review the details below. Reply **Confirm** to submit, or tell me what you'd like to change.",
+				ConfirmationCard:  h.buildConfirmationCard(state.FormName, state.UserType, answers, form.Fields),
 			}, nil
 		}
 
@@ -262,38 +324,12 @@ func (h *Handlers) handleRegistrationFlow(c *gin.Context, userID, userMessage st
 
 	complete, answers, ask := parseGatheringResponse(reply)
 	if complete && len(answers) > 0 {
-		submitterID := c.GetHeader("X-User-ID")
-		if submitterID == "" {
-			submitterID = "admin"
-		}
-		userIDForAnswer := ""
-		for _, k := range []string{"user_id", "student_id", "staff_number", "id", "name"} {
-			if v, ok := answers[k]; ok {
-				if s, ok := v.(string); ok && s != "" {
-					userIDForAnswer = s
-					break
-				}
-			}
-		}
-		if userIDForAnswer == "" {
-			userIDForAnswer = submitterID
-		}
-		fa := &models.FormAnswer{
-			ID:          uuid.New().String(),
-			FormID:      selected.ID,
-			FormName:    selected.Name,
-			UserID:      userIDForAnswer,
-			UserType:    selected.UserType,
-			Answers:     answers,
-			SubmittedAt: time.Now().Format(time.RFC3339),
-			SubmittedBy: submitterID,
-		}
-		if err := h.db.StoreFormAnswer(fa); err != nil {
-			return nil, fmt.Errorf("failed to save registration: %w", err)
-		}
-		h.db.DeleteRegistrationState(userID)
+		state.Step = "pending_confirmation"
+		state.GatheredAnswers = answers
+		_ = h.db.StoreRegistrationState(userID, state)
 		return &models.ChatResponse{
-			Response: fmt.Sprintf("Registration complete. Your **%s** response has been saved from what you provided. You can view it under Form Answers.", selected.Name),
+			Response:          "Please review the details below. Reply **Confirm** to submit, or tell me what you'd like to change.",
+			ConfirmationCard:  h.buildConfirmationCard(selected.Name, selected.UserType, answers, selected.Fields),
 		}, nil
 	}
 
