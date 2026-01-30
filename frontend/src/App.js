@@ -831,20 +831,50 @@ function App() {
                           {msg.confirmationCard.user_type || 'student'}
                         </span>
                         <div className="confirmation-card-fields">
-                          {(msg.confirmationCard.fields && msg.confirmationCard.fields.length > 0
-                            ? msg.confirmationCard.fields
-                            : Object.keys(msg.confirmationCard.answers || {}).map(name => ({ name, label: name }))
-                          ).map((field, idx) => {
-                            const value = (msg.confirmationCard.answers || {})[field.name];
-                            if (value === undefined || value === null || value === '') return null;
-                            const label = field.label || field.name;
-                            return (
-                              <div key={idx} className="confirmation-card-row">
-                                <span className="confirmation-card-label">{label}:</span>
-                                <span className="confirmation-card-value">{String(value)}</span>
-                              </div>
-                            );
-                          })}
+                          {(() => {
+                            const answers = msg.confirmationCard.answers || {};
+                            const fields = (msg.confirmationCard.fields && msg.confirmationCard.fields.length > 0)
+                              ? msg.confirmationCard.fields
+                              : Object.keys(answers).map(name => ({ name, label: name }));
+                            const normalizeKey = (k) => (k || '').toString().toLowerCase().replace(/\s+/g, '_').trim();
+                            const getValue = (field) => {
+                              const v = answers[field.name] ?? answers[field.label];
+                              if (v !== undefined && v !== null && v !== '') return v;
+                              const n = normalizeKey(field.name);
+                              const labelNorm = normalizeKey(field.label);
+                              for (const [key, val] of Object.entries(answers)) {
+                                if (val === undefined || val === null || val === '') continue;
+                                const keyNorm = normalizeKey(key);
+                                if (keyNorm === n || keyNorm === labelNorm) return val;
+                              }
+                              return undefined;
+                            };
+                            const rows = fields
+                              .map((field, idx) => {
+                                const value = getValue(field);
+                                if (value === undefined || value === null || value === '') return null;
+                                const label = field.label || field.name;
+                                return (
+                                  <div key={idx} className="confirmation-card-row">
+                                    <span className="confirmation-card-label">{label}:</span>
+                                    <span className="confirmation-card-value">{String(value)}</span>
+                                  </div>
+                                );
+                              })
+                              .filter(Boolean);
+                            if (rows.length > 0) return rows;
+                            return Object.entries(answers).map(([key, val]) => {
+                              if (val === undefined || val === null || val === '') return null;
+                              if (typeof val === 'object') return null;
+                              const label = (typeof key === 'string' && key.length > 0) ? key.replace(/_/g, ' ') : key;
+                              return (
+                                <div key={key} className="confirmation-card-row">
+                                  <span className="confirmation-card-label">{label}:</span>
+                                  <span className="confirmation-card-value">{String(val)}</span>
+                                </div>
+                              );
+                            }).filter(Boolean);
+                          })()}
                         </div>
                         <div className="confirmation-card-actions">
                           <button
