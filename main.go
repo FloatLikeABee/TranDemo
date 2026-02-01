@@ -59,7 +59,7 @@ func main() {
 	}
 
 	// Initialize handlers
-	h := handlers.New(database, aiService, sqlService, cfg.SQLFilesDir, cfg.VoiceSamplesDir)
+	h := handlers.New(database, aiService, sqlService, cfg.SQLFilesDir, cfg.VoiceSamplesDir, cfg.ExternalAPIBase)
 
 	// Setup Gin router
 	r := gin.Default()

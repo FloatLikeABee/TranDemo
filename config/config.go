@@ -9,15 +9,16 @@ import (
 var FormSampleJSON string
 
 type Config struct {
-	Port           string
-	GeminiAPIKey   string
-	ModelName      string
-	DBPath         string
-	SQLFilesDir    string
-	ResultsDir     string
-	SitesDir       string
-	VoiceSamplesDir string
-	SQLServer      SQLServerConfig
+	Port             string
+	GeminiAPIKey     string
+	ModelName        string
+	DBPath           string
+	SQLFilesDir      string
+	ResultsDir       string
+	SitesDir         string
+	VoiceSamplesDir  string
+	ExternalAPIBase  string // Image reader, PDF reader, Gathering (e.g. http://localhost:8000)
+	SQLServer        SQLServerConfig
 }
 
 type SQLServerConfig struct {
@@ -41,6 +42,7 @@ func GetConfig() Config {
 		ResultsDir:     getEnv("RESULTS_DIR", "./results"),
 		SitesDir:       getEnv("SITES_DIR", "./sites"),
 		VoiceSamplesDir: getEnv("VOICE_SAMPLES_DIR", "./voice_samples"),
+		ExternalAPIBase:  getEnv("EXTERNAL_API_BASE", "http://localhost:8000"),
 		SQLServer: SQLServerConfig{
 			Server:   getEnv("SQL_SERVER", "192.168.9.9"),
 			Port:     getEnv("SQL_PORT", "1433"),

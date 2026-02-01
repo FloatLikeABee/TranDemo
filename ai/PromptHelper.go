@@ -250,3 +250,46 @@ Rules:
 	return systemPrompt, userPrompt
 }
 
+// BuildDocumentIntentPrompt builds a prompt to classify document intent: FORM, RESEARCH, or SUMMARY.
+func BuildDocumentIntentPrompt(userMessage, extractedText, aiResult string) string {
+	return fmt.Sprintf(`You are a classifier. Based on the user's message and the extracted/summarized document content, decide the single best action.
+
+User message: %s
+
+Document content (extracted/summarized): %s
+
+Reply with exactly ONE word:
+- FORM: if the content describes or implies a form (registration, application, survey, questionnaire, data collection form, student form, staff form, or any structured form to collect fields). Also choose FORM if the user explicitly asks to create a form from the document.
+- RESEARCH: if the user wants to research the topic further, find more information, or the content is a topic that would benefit from web search (e.g. "research this", "find out more", "what do people say about", general knowledge topic).
+- SUMMARY: if we should just show the summary (user did not ask for a form or research; default when unclear).
+
+Reply with only: FORM or RESEARCH or SUMMARY`, userMessage, aiResult+"\n\n"+extractedText)
+}
+
+// BuildFormTemplateFromContentPrompt builds a prompt to generate a FormTemplate (name, description, user_type, fields) from document content.
+func BuildFormTemplateFromContentPrompt(content string, userContext string) string {
+	return fmt.Sprintf(`Generate a form template from the following document content. Output valid JSON only, no markdown or explanation.
+
+Required JSON structure (use exactly these keys):
+{
+  "name": "Form Name",
+  "description": "Short description",
+  "user_type": "student" or "staff" or "general",
+  "fields": [
+    {"name": "field_id", "label": "Display Label", "type": "text|email|number|tel|date|select", "required": true/false, "placeholder": "", "options": []}
+  ]
+}
+
+Rules:
+- "name" and "description" must reflect the document.
+- "user_type": use "student" for student-related forms, "staff" for staff/employee forms, "general" for anything else.
+- "fields": extract every field/question the document describes. Use "name" as a short id (e.g. name, age, email). Use "label" for human-readable label. Use "type" text, email, number, tel, date, or select. For select, include "options" array.
+- For select fields, set "options" to an array of strings if the document specifies choices; otherwise use type "text".
+
+Document content:
+%s
+
+User context (if any): %s
+
+Return ONLY the JSON object.`, content, userContext)
+}

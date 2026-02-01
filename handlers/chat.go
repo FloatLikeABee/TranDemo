@@ -29,17 +29,47 @@ import (
 // @Failure      500      {object}  map[string]string   "Internal server error"
 // @Router       /api/chat [post]
 func (h *Handlers) ChatHandler(c *gin.Context) {
-	var req models.ChatRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
-		return
-	}
-
-	// Get user ID FIRST - before anything else
-	// Use "admin" as default since we don't have a user system yet
 	userID := c.GetHeader("X-User-ID")
 	if userID == "" {
 		userID = "admin"
+	}
+
+	var req models.ChatRequest
+	contentType := c.GetHeader("Content-Type")
+	isMultipart := strings.Contains(contentType, "multipart/form-data")
+	if isMultipart {
+		message := c.PostForm("message")
+		file, err := c.FormFile("file") // returns *multipart.FileHeader
+		if err == nil && file != nil {
+			// File upload flow: extract content, classify intent, form/research/summary
+			response, err := h.handleChatWithFile(c, userID, message, file)
+			if err != nil {
+				log.Printf("[CHAT HANDLER] File flow error: %v", err)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to process file: %v", err)})
+				return
+			}
+			c.JSON(http.StatusOK, response)
+			return
+		}
+		req.Message = message
+	} else {
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+			return
+		}
+	}
+
+	// PRIORITY 0.3: Pending proposed form — user confirming to save
+	if pending := getPendingForm(userID); pending != nil && isFormConfirmMessage(req.Message) {
+		response, err := h.savePendingFormAndClear(c, userID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		if response != nil {
+			c.JSON(http.StatusOK, response)
+			return
+		}
 	}
 
 	// PRIORITY 0: Check if this is a voice input

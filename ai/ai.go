@@ -317,6 +317,52 @@ func (a *AIService) GenerateForm(userPrompt string) (string, error) {
 	return formJSON, nil
 }
 
+// ClassifyDocumentIntent returns "FORM", "RESEARCH", or "SUMMARY" based on user message and document content.
+func (a *AIService) ClassifyDocumentIntent(userMessage, extractedText, aiResult string) (string, error) {
+	ctx := context.Background()
+	prompt := BuildDocumentIntentPrompt(userMessage, extractedText, aiResult)
+	messages := []DashScopeMessage{{Role: "user", Content: prompt}}
+	reply, err := a.callDashScopeAPI(ctx, messages)
+	if err != nil {
+		return "SUMMARY", err
+	}
+	s := strings.TrimSpace(strings.ToUpper(reply))
+	if strings.Contains(s, "FORM") {
+		return "FORM", nil
+	}
+	if strings.Contains(s, "RESEARCH") {
+		return "RESEARCH", nil
+	}
+	return "SUMMARY", nil
+}
+
+// GenerateFormTemplateFromContent generates a FormTemplate (name, description, user_type, fields) from document content.
+func (a *AIService) GenerateFormTemplateFromContent(content string, userContext string) (*models.FormTemplate, error) {
+	ctx := context.Background()
+	prompt := BuildFormTemplateFromContentPrompt(content, userContext)
+	messages := []DashScopeMessage{{Role: "user", Content: prompt}}
+	reply, err := a.callDashScopeAPI(ctx, messages)
+	if err != nil {
+		return nil, err
+	}
+	raw := strings.TrimSpace(reply)
+	raw = strings.TrimPrefix(raw, "```json")
+	raw = strings.TrimPrefix(raw, "```")
+	raw = strings.TrimSuffix(raw, "```")
+	raw = strings.TrimSpace(raw)
+	var t models.FormTemplate
+	if err := json.Unmarshal([]byte(raw), &t); err != nil {
+		return nil, fmt.Errorf("invalid form template JSON: %w", err)
+	}
+	if t.UserType == "" {
+		t.UserType = "general"
+	}
+	if t.UserType != "student" && t.UserType != "staff" {
+		t.UserType = "general"
+	}
+	return &t, nil
+}
+
 func (a *AIService) GenerateHTMLPage(resultFile *models.ResultFile, title string) (string, error) {
 	// Use context with longer timeout for HTML generation (5 minutes)
 	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)

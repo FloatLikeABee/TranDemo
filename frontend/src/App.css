@@ -351,6 +351,192 @@
   border-color: #5a5a5a;
 }
 
+/* Proposed form card (from document upload) */
+.proposed-form-card {
+  margin-top: 14px;
+  background: #1e1e1e;
+  border: 1px solid #3a3a3a;
+  border-left: 4px solid #FF8C00;
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.proposed-form-title {
+  color: #FF8C00;
+  font-size: 1.1rem;
+  margin: 0 0 0.35rem 0;
+  font-weight: 600;
+}
+
+.proposed-form-desc {
+  color: #b0b0b0;
+  font-size: 0.85rem;
+  margin: 0 0 0.5rem 0;
+}
+
+.proposed-form-badge {
+  display: inline-block;
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  margin-bottom: 0.75rem;
+}
+
+.proposed-form-badge.badge-student {
+  background: rgba(33, 150, 243, 0.25);
+  color: #64b5f6;
+  border: 1px solid rgba(33, 150, 243, 0.4);
+}
+
+.proposed-form-badge.badge-staff {
+  background: rgba(76, 175, 80, 0.2);
+  color: #81c784;
+  border: 1px solid rgba(76, 175, 80, 0.4);
+}
+
+.proposed-form-badge.badge-general {
+  background: rgba(255, 140, 0, 0.2);
+  color: #ffb74d;
+  border: 1px solid rgba(255, 140, 0, 0.4);
+}
+
+.proposed-form-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+}
+
+.proposed-form-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.3rem 0;
+  border-bottom: 1px solid #2a2a2a;
+  font-size: 0.9rem;
+}
+
+.proposed-form-label {
+  color: #e0e0e0;
+  font-weight: 500;
+}
+
+.proposed-form-type {
+  color: #888;
+  font-size: 0.8rem;
+}
+
+.proposed-form-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding-top: 0.5rem;
+  border-top: 1px solid #2a2a2a;
+}
+
+.proposed-form-btn {
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+}
+
+.proposed-form-btn.save-btn {
+  background: #FF8C00;
+  color: #1a1a1a;
+}
+
+.proposed-form-btn.save-btn:hover {
+  background: #FF7F00;
+  box-shadow: 0 2px 8px rgba(255, 140, 0, 0.4);
+}
+
+.proposed-form-btn.edit-btn {
+  background: #3a3a3a;
+  color: #e0e0e0;
+  border: 1px solid #4a4a4a;
+}
+
+.proposed-form-btn.edit-btn:hover {
+  background: #4a4a4a;
+}
+
+/* Research content (from gathering API) */
+.research-content-block {
+  margin-top: 12px;
+  background: #1a1a1a;
+  border: 1px solid #303030;
+  border-radius: 8px;
+  padding: 1rem;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.research-content-text {
+  margin: 0;
+  white-space: pre-wrap;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: #e0e0e0;
+  font-family: inherit;
+}
+
+/* File attach UI */
+.file-input-hidden {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.attach-file-button {
+  background: #3a3a3a;
+  border: 1px solid #4a4a4a;
+  color: #e0e0e0;
+  padding: 0.5rem 0.6rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1.1rem;
+  transition: background 0.2s;
+}
+
+.attach-file-button:hover {
+  background: #4a4a4a;
+}
+
+.attached-file-tag {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.75rem;
+  background: #2a2a2a;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  color: #e0e0e0;
+  margin-bottom: 0.5rem;
+}
+
+.attached-file-remove {
+  background: none;
+  border: none;
+  color: #888;
+  cursor: pointer;
+  font-size: 1.2rem;
+  line-height: 1;
+  padding: 0 0.25rem;
+}
+
+.attached-file-remove:hover {
+  color: #ff6666;
+}
+
 .sql-block {
   margin-top: 15px;
   border: 1px solid #303030;

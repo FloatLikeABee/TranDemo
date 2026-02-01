@@ -29,8 +29,10 @@ function App() {
   const [continuousVoiceMode, setContinuousVoiceMode] = useState(false); // Track if voice input should stay active
   const [isSpeaking, setIsSpeaking] = useState(false); // Track if TTS is currently speaking
   const [voiceReadingEnabled, setVoiceReadingEnabled] = useState(false); // Toggle for voice reading (default: off)
+  const [attachedFile, setAttachedFile] = useState(null); // Image or PDF for upload
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  const fileInputRef = useRef(null);
   const silenceTimerRef = useRef(null);
   const lastTranscriptRef = useRef('');
   const speechSynthesisRef = useRef(null);
@@ -435,12 +437,16 @@ function App() {
               const aiResponse = response.data.response;
               const sql = response.data.sql;
               const confirmationCard = response.data.confirmation_card || null;
+              const proposedForm = response.data.proposed_form || null;
+              const researchContent = response.data.research_content || null;
 
               setMessages(prev => [...prev, {
                 type: 'assistant',
                 content: aiResponse,
                 sql: sql,
-                confirmationCard: confirmationCard
+                confirmationCard: confirmationCard,
+                proposedForm: proposedForm,
+                researchContent: researchContent
               }]);
             }).catch(error => {
               console.error('Error:', error);
@@ -479,8 +485,10 @@ function App() {
     };
   }, [transcript, continuousVoiceMode, listening, loading, browserSupportsSpeechRecognition, micPermission, isSpeaking]);
 
-  const sendMessage = async (messageText) => {
-    if (!messageText.trim() || loading) return;
+  const sendMessage = async (messageText, file = null) => {
+    const trimmed = (messageText || '').trim();
+    if (!trimmed && !file) return;
+    if (loading) return;
 
     // Clear silence timer
     if (silenceTimerRef.current) {
@@ -493,26 +501,39 @@ function App() {
       SpeechRecognition.stopListening();
     }
 
-    const userMessage = messageText.trim();
+    const userMessage = trimmed || (file ? `Uploaded ${file.name}` : '');
     setInput('');
+    setAttachedFile(null);
     resetTranscript();
-    setMessages(prev => [...prev, { type: 'user', content: userMessage }]);
+    setMessages(prev => [...prev, { type: 'user', content: file ? `📎 ${file.name}${trimmed ? ': ' + trimmed : ''}` : userMessage }]);
     setLoading(true);
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/chat`, {
-        message: userMessage
-      });
+      let response;
+      if (file) {
+        const formData = new FormData();
+        formData.append('message', trimmed);
+        formData.append('file', file);
+        response = await axios.post(`${API_BASE_URL}/api/chat`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+      } else {
+        response = await axios.post(`${API_BASE_URL}/api/chat`, { message: userMessage });
+      }
 
       const aiResponse = response.data.response;
       const sql = response.data.sql;
       const confirmationCard = response.data.confirmation_card || null;
+      const proposedForm = response.data.proposed_form || null;
+      const researchContent = response.data.research_content || null;
 
       setMessages(prev => [...prev, {
         type: 'assistant',
         content: aiResponse,
         sql: sql,
-        confirmationCard: confirmationCard
+        confirmationCard: confirmationCard,
+        proposedForm: proposedForm,
+        researchContent: researchContent
       }]);
     } catch (error) {
       console.error('Error:', error);
@@ -545,8 +566,13 @@ function App() {
 
   const handleSend = async (e) => {
     e.preventDefault();
-    if (!input.trim() || loading) return;
-    await sendMessage(input);
+    if (loading) return;
+    if (attachedFile && !input.trim()) {
+      await sendMessage('', attachedFile);
+      return;
+    }
+    if (!input.trim() && !attachedFile) return;
+    await sendMessage(input, attachedFile || null);
   };
 
   const handleExampleClick = async (exampleText) => {
@@ -795,6 +821,9 @@ function App() {
                 <li onClick={() => handleExampleClick('"Build a form to track student attendance by date and route"')}>
                   "Build a form to track student attendance by date and route"
                 </li>
+                <li style={{ borderColor: '#4CAF50' }}>
+                  📎 <strong>Upload an image or PDF</strong> (📎 button) — get a summary, create a form from it, or research the topic
+                </li>
               </ul>
               <div className="voice-feature-notice">
                 <p><strong>🎙️ Voice Attendance Feature:</strong></p>
@@ -824,6 +853,49 @@ function App() {
                 {msg.type === 'assistant' && (
                   <div className="message-bubble assistant-bubble">
                     <div className="response-text">{msg.content.replace(/Here's the SQL query based on your request:\n\n/g, '')}</div>
+                    {msg.proposedForm && msg.proposedForm.form_template && (
+                      <div className="proposed-form-card">
+                        <h3 className="proposed-form-title">{msg.proposedForm.form_template.name}</h3>
+                        {msg.proposedForm.form_template.description && (
+                          <p className="proposed-form-desc">{msg.proposedForm.form_template.description}</p>
+                        )}
+                        <span className={`proposed-form-badge badge-${msg.proposedForm.form_template.user_type || 'general'}`}>
+                          {msg.proposedForm.form_template.user_type || 'general'}
+                        </span>
+                        <div className="proposed-form-fields">
+                          {(msg.proposedForm.form_template.fields || []).map((field, idx) => (
+                            <div key={idx} className="proposed-form-row">
+                              <span className="proposed-form-label">{field.label || field.name}</span>
+                              <span className="proposed-form-type">({field.type}{field.required ? ', required' : ''})</span>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="proposed-form-actions">
+                          <button
+                            type="button"
+                            className="proposed-form-btn save-btn"
+                            onClick={() => sendMessage('yes')}
+                          >
+                            Save form
+                          </button>
+                          <button
+                            type="button"
+                            className="proposed-form-btn edit-btn"
+                            onClick={() => {
+                              sendMessage("I'd like to change something");
+                              setTimeout(() => inputRef.current?.focus(), 100);
+                            }}
+                          >
+                            Edit
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    {msg.researchContent && (
+                      <div className="research-content-block">
+                        <pre className="research-content-text">{msg.researchContent}</pre>
+                      </div>
+                    )}
                     {msg.confirmationCard && (
                       <div className="registration-confirmation-card">
                         <h3 className="confirmation-card-title">{msg.confirmationCard.form_name}</h3>
@@ -939,13 +1011,40 @@ function App() {
         </div>
 
         <form className="input-container" onSubmit={handleSend} onClick={(e) => e.stopPropagation()}>
+          {attachedFile && (
+            <div className="attached-file-tag">
+              <span>📎 {attachedFile.name}</span>
+              <button type="button" className="attached-file-remove" onClick={() => setAttachedFile(null)} aria-label="Remove file">×</button>
+            </div>
+          )}
           <div className="input-wrapper">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*,.pdf,application/pdf"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) setAttachedFile(f);
+                e.target.value = '';
+              }}
+              className="file-input-hidden"
+              aria-label="Upload image or PDF"
+            />
+            <button
+              type="button"
+              className="attach-file-button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={loading || isVoiceRecording || isSpeaking}
+              title="Upload image or PDF"
+            >
+              📎
+            </button>
             <input
               ref={inputRef}
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder={isSpeaking ? "🔊 Computer is reading..." : (listening ? "🎤 Listening... (auto-sends after 3s silence)" : "Type your SQL request here...")}
+              placeholder={isSpeaking ? "🔊 Computer is reading..." : (listening ? "🎤 Listening... (auto-sends after 3s silence)" : "Type a message or upload image/PDF...")}
               className="message-input"
               disabled={loading || isVoiceRecording || isSpeaking}
             />
@@ -986,7 +1085,7 @@ function App() {
           <button
             type="submit"
             className="send-button"
-            disabled={loading || !input.trim() || listening || isVoiceRecording || isSpeaking}
+            disabled={loading || (!input.trim() && !attachedFile) || listening || isVoiceRecording || isSpeaking}
           >
             {loading ? '⏳' : '➤'}
           </button>

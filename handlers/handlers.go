@@ -25,16 +25,17 @@ import (
 
 // Handlers contains all handler dependencies
 type Handlers struct {
-	db               *db.DB
-	aiService        *ai.AIService
-	sqlService       *service.SQLServerService
-	complaintService *service.ComplaintService
-	voiceService     *service.VoiceService
-	sqlFilesDir      string
+	db                *db.DB
+	aiService         *ai.AIService
+	sqlService        *service.SQLServerService
+	complaintService  *service.ComplaintService
+	voiceService      *service.VoiceService
+	sqlFilesDir       string
+	externalAPIBase   string
 }
 
 // New creates a new Handlers instance
-func New(db *db.DB, aiService *ai.AIService, sqlService *service.SQLServerService, sqlFilesDir string, voiceSamplesDir string) *Handlers {
+func New(db *db.DB, aiService *ai.AIService, sqlService *service.SQLServerService, sqlFilesDir string, voiceSamplesDir string, externalAPIBase string) *Handlers {
 	return &Handlers{
 		db:               db,
 		aiService:        aiService,
@@ -42,5 +43,6 @@ func New(db *db.DB, aiService *ai.AIService, sqlService *service.SQLServerServic
 		complaintService: service.NewComplaintService(),
 		voiceService:     service.NewVoiceService(voiceSamplesDir),
 		sqlFilesDir:      sqlFilesDir,
+		externalAPIBase:  externalAPIBase,
 	}
 }

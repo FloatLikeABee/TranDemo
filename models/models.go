@@ -7,10 +7,17 @@ type ChatRequest struct {
 }
 
 type ChatResponse struct {
-	Response        string                       `json:"response"`
-	SQL             string                       `json:"sql,omitempty"`
-	FormJSON        string                       `json:"form_json,omitempty"`
+	Response         string                       `json:"response"`
+	SQL              string                       `json:"sql,omitempty"`
+	FormJSON         string                       `json:"form_json,omitempty"`
 	ConfirmationCard *RegistrationConfirmationCard `json:"confirmation_card,omitempty"`
+	ProposedForm     *ProposedFormCard             `json:"proposed_form,omitempty"`
+	ResearchContent  string                       `json:"research_content,omitempty"`
+}
+
+// ProposedFormCard is sent when a form is generated from document upload; user must confirm before saving.
+type ProposedFormCard struct {
+	FormTemplate FormTemplate `json:"form_template"`
 }
 
 // RegistrationConfirmationCard is sent so the chat UI can show a review card before submitting.
