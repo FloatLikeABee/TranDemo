@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime"
 	"mime/multipart"
 	"net/http"
+	"path"
 	"strings"
 	"time"
 )
@@ -26,6 +28,36 @@ var imageReaderProviderModels = []struct{ provider, model string }{
 	{imageReaderProviderFallback, imageReaderModelFallback},
 }
 
+// detectImageContentType returns an image/* MIME type for the image-reader. Uses content
+// detection first so uploads sent as application/octet-stream are sent with the correct type.
+func detectImageContentType(fileContent []byte, filename string) string {
+	detected := http.DetectContentType(fileContent)
+	if strings.HasPrefix(detected, "image/") {
+		return strings.TrimSpace(strings.Split(detected, ";")[0])
+	}
+	// Magic bytes for common image formats (when DetectContentType returns application/octet-stream)
+	if len(fileContent) >= 8 {
+		switch {
+		case len(fileContent) >= 3 && fileContent[0] == 0xFF && fileContent[1] == 0xD8 && fileContent[2] == 0xFF:
+			return "image/jpeg"
+		case len(fileContent) >= 8 && fileContent[0] == 0x89 && fileContent[1] == 0x50 && fileContent[2] == 0x4E && fileContent[3] == 0x47:
+			return "image/png"
+		case len(fileContent) >= 6 && fileContent[0] == 0x47 && fileContent[1] == 0x49 && fileContent[2] == 0x46:
+			return "image/gif"
+		case len(fileContent) >= 12 && fileContent[0] == 0x52 && fileContent[1] == 0x49 && fileContent[2] == 0x46 && fileContent[3] == 0x46 &&
+			fileContent[8] == 0x57 && fileContent[9] == 0x45 && fileContent[10] == 0x42 && fileContent[11] == 0x50:
+			return "image/webp"
+		}
+	}
+	// Fall back to extension
+	if ext := path.Ext(filename); ext != "" {
+		if t := mime.TypeByExtension(ext); t != "" && strings.HasPrefix(t, "image/") {
+			return strings.TrimSpace(strings.Split(t, ";")[0])
+		}
+	}
+	return "image/jpeg"
+}
+
 // readImageAndProcessWithProvider sends one image to image-reader/read-and-process with the given provider/model.
 func (h *Handlers) readImageAndProcessWithProvider(fileContent []byte, filename string, systemPrompt string, provider, model string) (extractedText, aiResult string, err error) {
 	base := strings.TrimSuffix(h.externalAPIBase, "/")
@@ -37,7 +69,11 @@ func (h *Handlers) readImageAndProcessWithProvider(fileContent []byte, filename 
 	_ = w.WriteField("system_prompt", systemPrompt)
 	_ = w.WriteField("provider", provider)
 	_ = w.WriteField("model", model)
-	part, err := w.CreateFormFile("file", filename)
+	contentType := detectImageContentType(fileContent, filename)
+	part, err := w.CreatePart(map[string][]string{
+		"Content-Disposition": {`form-data; name="file"; filename="` + filename + `"`},
+		"Content-Type":       {contentType},
+	})
 	if err != nil {
 		return "", "", err
 	}
