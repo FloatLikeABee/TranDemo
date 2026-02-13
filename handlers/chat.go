@@ -39,6 +39,7 @@ func (h *Handlers) ChatHandler(c *gin.Context) {
 	isMultipart := strings.Contains(contentType, "multipart/form-data")
 	if isMultipart {
 		message := c.PostForm("message")
+		req.SessionID = c.PostForm("session_id")
 		file, err := c.FormFile("file") // returns *multipart.FileHeader
 		if err == nil && file != nil {
 			// File upload flow: extract content, classify intent, form/research/summary
@@ -48,6 +49,9 @@ func (h *Handlers) ChatHandler(c *gin.Context) {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to process file: %v", err)})
 				return
 			}
+			sessionID := resolveSessionID(req.SessionID)
+			_ = h.db.EnsureDefaultChatSession(userID)
+			persistChatExchange(h, userID, sessionID, message, response)
 			c.JSON(http.StatusOK, response)
 			return
 		}
@@ -59,6 +63,9 @@ func (h *Handlers) ChatHandler(c *gin.Context) {
 		}
 	}
 
+	sessionID := resolveSessionID(req.SessionID)
+	_ = h.db.EnsureDefaultChatSession(userID)
+
 	// PRIORITY 0.3: Pending proposed form — user confirming to save
 	if pending := getPendingForm(userID); pending != nil && isFormConfirmMessage(req.Message) {
 		response, err := h.savePendingFormAndClear(c, userID)
@@ -67,6 +74,7 @@ func (h *Handlers) ChatHandler(c *gin.Context) {
 			return
 		}
 		if response != nil {
+			persistChatExchange(h, userID, sessionID, req.Message, response)
 			c.JSON(http.StatusOK, response)
 			return
 		}
@@ -81,6 +89,7 @@ func (h *Handlers) ChatHandler(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to process voice: %v", err)})
 			return
 		}
+		persistChatExchange(h, userID, sessionID, "[Voice input]", response)
 		c.JSON(http.StatusOK, response)
 		return
 	}
@@ -111,6 +120,7 @@ func (h *Handlers) ChatHandler(c *gin.Context) {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to process complaint: %v", err)})
 				return
 			}
+			persistChatExchange(h, userID, sessionID, req.Message, response)
 			c.JSON(http.StatusOK, response)
 			return
 		} else if complaintState.Step == "complete" {
@@ -129,6 +139,7 @@ func (h *Handlers) ChatHandler(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to process complaint: %v", err)})
 			return
 		}
+		persistChatExchange(h, userID, sessionID, req.Message, response)
 		c.JSON(http.StatusOK, response)
 		return
 	}
@@ -144,6 +155,7 @@ func (h *Handlers) ChatHandler(c *gin.Context) {
 			return
 		}
 		if response != nil {
+			persistChatExchange(h, userID, sessionID, req.Message, response)
 			c.JSON(http.StatusOK, response)
 			return
 		}
@@ -159,6 +171,7 @@ func (h *Handlers) ChatHandler(c *gin.Context) {
 			return
 		}
 		if response != nil {
+			persistChatExchange(h, userID, sessionID, req.Message, response)
 			c.JSON(http.StatusOK, response)
 			return
 		}
@@ -251,21 +264,11 @@ func (h *Handlers) ChatHandler(c *gin.Context) {
 
 			responseText = chatResponse
 
-			// Store chat history
-			userID := c.GetHeader("X-User-ID")
-			if userID == "" {
-				userID = "admin"
-			}
-
-			if err := h.db.StoreChatHistory(userID, req.Message, responseText); err != nil {
-				log.Printf("Error storing chat history: %v", err)
-			}
-
 			response := models.ChatResponse{
 				Response: responseText,
 				SQL:      "",
 			}
-
+			persistChatExchange(h, userID, sessionID, req.Message, &response)
 			log.Printf("Sending chat response to client")
 			c.JSON(http.StatusOK, response)
 			return
@@ -381,12 +384,6 @@ func (h *Handlers) ChatHandler(c *gin.Context) {
 		}
 	}
 
-	// Store chat history (userID already set at the beginning of the function)
-
-	if err := h.db.StoreChatHistory(userID, req.Message, responseText); err != nil {
-		log.Printf("Error storing chat history: %v", err)
-	}
-
 	response := models.ChatResponse{
 		Response: responseText,
 		SQL:      sql,
@@ -395,8 +392,41 @@ func (h *Handlers) ChatHandler(c *gin.Context) {
 		response.FormJSON = formJSON
 	}
 
+	persistChatExchange(h, userID, sessionID, req.Message, &response)
 	log.Printf("Sending response to client")
 	c.JSON(http.StatusOK, response)
 	log.Printf("Response sent successfully")
+}
+
+// resolveSessionID returns the session ID to use; empty means default.
+func resolveSessionID(s string) string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return models.DefaultChatSessionID
+	}
+	return s
+}
+
+// persistChatExchange appends user and assistant messages to the session.
+func persistChatExchange(h *Handlers, userID, sessionID string, userMessage string, resp *models.ChatResponse) {
+	if resp == nil {
+		return
+	}
+	userMsg := &models.StoredChatMessage{Role: "user", Content: userMessage}
+	if err := h.db.AppendChatMessage(userID, sessionID, userMsg); err != nil {
+		log.Printf("[CHAT] Failed to append user message to session: %v", err)
+		return
+	}
+	assistantMsg := &models.StoredChatMessage{
+		Role:            "assistant",
+		Content:         resp.Response,
+		SQL:             resp.SQL,
+		ConfirmationCard: resp.ConfirmationCard,
+		ProposedForm:    resp.ProposedForm,
+		ResearchContent: resp.ResearchContent,
+	}
+	if err := h.db.AppendChatMessage(userID, sessionID, assistantMsg); err != nil {
+		log.Printf("[CHAT] Failed to append assistant message to session: %v", err)
+	}
 }
 

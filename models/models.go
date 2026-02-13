@@ -1,9 +1,33 @@
 package models
 
+// DefaultChatSessionID is the session ID used when the client does not send one.
+const DefaultChatSessionID = "default"
+
 type ChatRequest struct {
-	Message    string `json:"message,omitempty"`
-	AudioData  string `json:"audio_data,omitempty"`  // Base64 encoded audio for voice input
+	Message     string `json:"message,omitempty"`
+	SessionID   string `json:"session_id,omitempty"`   // Optional; empty means default session
+	AudioData   string `json:"audio_data,omitempty"`  // Base64 encoded audio for voice input
 	AudioFormat string `json:"audio_format,omitempty"` // "wav", "mp3", "webm", etc.
+}
+
+// ChatSession is a conversation session (default or user-created).
+type ChatSession struct {
+	ID        string `json:"id"`
+	UserID    string `json:"user_id"`
+	Title     string `json:"title"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
+}
+
+// StoredChatMessage is one message in a session (user or assistant), stored in DB.
+type StoredChatMessage struct {
+	Role            string                       `json:"role"` // "user" | "assistant" | "error"
+	Content         string                       `json:"content"`
+	SQL             string                       `json:"sql,omitempty"`
+	ConfirmationCard *RegistrationConfirmationCard `json:"confirmation_card,omitempty"`
+	ProposedForm    *ProposedFormCard             `json:"proposed_form,omitempty"`
+	ResearchContent string                       `json:"research_content,omitempty"`
+	Timestamp       string                       `json:"timestamp"`
 }
 
 type ChatResponse struct {

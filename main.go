@@ -92,6 +92,11 @@ func main() {
 
 	// Routes
 	r.GET("/health", h.HealthHandler)
+	r.GET("/api/chat/sessions", h.ListChatSessionsHandler)
+	r.POST("/api/chat/sessions", h.CreateChatSessionHandler)
+	r.GET("/api/chat/sessions/:id", h.GetChatSessionHandler)
+	r.PUT("/api/chat/sessions/:id", h.UpdateChatSessionHandler)
+	r.DELETE("/api/chat/sessions/:id", h.DeleteChatSessionHandler)
 	r.POST("/api/chat", h.ChatHandler)
 	r.POST("/api/sql/upload", h.UploadSQLFileHandler)
 	r.GET("/api/sql/files", h.ListSQLFilesHandler)

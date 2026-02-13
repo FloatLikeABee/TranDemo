@@ -30,6 +30,8 @@ function App() {
   const [isSpeaking, setIsSpeaking] = useState(false); // Track if TTS is currently speaking
   const [voiceReadingEnabled, setVoiceReadingEnabled] = useState(false); // Toggle for voice reading (default: off)
   const [attachedFile, setAttachedFile] = useState(null); // Image or PDF for upload
+  const [sessions, setSessions] = useState([]);
+  const [currentSessionId, setCurrentSessionId] = useState('default');
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -63,6 +65,53 @@ function App() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Map API StoredChatMessage to UI message shape
+  const storedToMessage = (m) => {
+    const type = m.role === 'user' ? 'user' : m.role === 'error' ? 'error' : 'assistant';
+    const base = { type, content: m.content || '' };
+    if (type === 'assistant') {
+      if (m.sql) base.sql = m.sql;
+      if (m.confirmation_card) base.confirmationCard = m.confirmation_card;
+      if (m.proposed_form) base.proposedForm = m.proposed_form;
+      if (m.research_content) base.researchContent = m.research_content;
+    }
+    return base;
+  };
+
+  const loadSessions = async () => {
+    try {
+      const res = await axios.get(`${API_BASE_URL}/api/chat/sessions`, {
+        headers: { 'X-User-ID': 'admin' }
+      });
+      setSessions(Array.isArray(res.data) ? res.data : []);
+    } catch (e) {
+      console.error('Load sessions error:', e);
+      setSessions([]);
+    }
+  };
+
+  const loadSessionMessages = async (sessionId) => {
+    try {
+      const res = await axios.get(`${API_BASE_URL}/api/chat/sessions/${sessionId}`, {
+        headers: { 'X-User-ID': 'admin' }
+      });
+      const list = res.data.messages || [];
+      setMessages(list.map(storedToMessage));
+    } catch (e) {
+      console.error('Load session messages error:', e);
+      setMessages([]);
+    }
+  };
+
+  useEffect(() => {
+    loadSessions();
+  }, []);
+
+  useEffect(() => {
+    if (!currentSessionId) return;
+    loadSessionMessages(currentSessionId);
+  }, [currentSessionId]);
 
   // Initialize speech synthesis and find female voice
   useEffect(() => {
@@ -432,7 +481,8 @@ function App() {
             setLoading(true);
 
             axios.post(`${API_BASE_URL}/api/chat`, {
-              message: userMessage
+              message: userMessage,
+              session_id: currentSessionId || 'default'
             }).then(response => {
               const aiResponse = response.data.response;
               const sql = response.data.sql;
@@ -514,11 +564,15 @@ function App() {
         const formData = new FormData();
         formData.append('message', trimmed);
         formData.append('file', file);
+        formData.append('session_id', currentSessionId || 'default');
         response = await axios.post(`${API_BASE_URL}/api/chat`, formData, {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
       } else {
-        response = await axios.post(`${API_BASE_URL}/api/chat`, { message: userMessage });
+        response = await axios.post(`${API_BASE_URL}/api/chat`, {
+          message: userMessage,
+          session_id: currentSessionId || 'default'
+        });
       }
 
       const aiResponse = response.data.response;
@@ -535,6 +589,7 @@ function App() {
         proposedForm: proposedForm,
         researchContent: researchContent
       }]);
+      loadSessions();
     } catch (error) {
       console.error('Error:', error);
       setMessages(prev => [...prev, {
@@ -775,8 +830,46 @@ function App() {
     });
   }, [browserSupportsSpeechRecognition, isMicAvailable, micPermission, isCheckingPermission, browserSupportChecked, isMicDisabled, loading]);
 
+  const handleNewChat = async () => {
+    try {
+      const res = await axios.post(`${API_BASE_URL}/api/chat/sessions`, { title: 'New chat' }, {
+        headers: { 'X-User-ID': 'admin' }
+      });
+      const id = res.data?.id;
+      if (id) {
+        setCurrentSessionId(id);
+        setMessages([]);
+        loadSessions();
+      }
+    } catch (e) {
+      console.error('Create session error:', e);
+    }
+  };
+
+  const handleSelectSession = (sessionId) => {
+    if (sessionId === currentSessionId) return;
+    setCurrentSessionId(sessionId);
+  };
+
   return (
     <div className="app">
+      <aside className="chat-sidebar">
+        <button type="button" className="sidebar-new-chat" onClick={handleNewChat}>
+          + New chat
+        </button>
+        <div className="sidebar-sessions">
+          {(sessions || []).map((s) => (
+            <button
+              type="button"
+              key={s.id}
+              className={`sidebar-session ${s.id === currentSessionId ? 'active' : ''}`}
+              onClick={() => handleSelectSession(s.id)}
+            >
+              <span className="sidebar-session-title">{s.title || 'Chat'}</span>
+            </button>
+          ))}
+        </div>
+      </aside>
       <div className="chat-container">
         <div className="chat-header">
           <h1 className="app-title">Transfinder Form Assistant</h1>

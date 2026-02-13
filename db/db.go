@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -669,6 +670,198 @@ func (d *DB) DeleteRegistrationState(userID string) error {
 	return d.badgerDB.Update(func(txn *badger.Txn) error {
 		key := []byte(fmt.Sprintf("registration:%s", userID))
 		return txn.Delete(key)
+	})
+}
+
+// Chat session storage (efficient prefix-based keys for list/get messages).
+
+const (
+	chatSessionPrefix = "chat_sess:"
+	chatMessagePrefix = "chat_msg:"
+)
+
+// EnsureDefaultChatSession creates the default session for user if it does not exist.
+func (d *DB) EnsureDefaultChatSession(userID string) error {
+	key := []byte(fmt.Sprintf("%s%s:%s", chatSessionPrefix, userID, models.DefaultChatSessionID))
+	var exists bool
+	err := d.badgerDB.View(func(txn *badger.Txn) error {
+		_, err := txn.Get(key)
+		exists = (err == nil)
+		return nil
+	})
+	if err != nil || exists {
+		return err
+	}
+	now := time.Now().Format(time.RFC3339)
+	sess := &models.ChatSession{
+		ID:        models.DefaultChatSessionID,
+		UserID:    userID,
+		Title:     "Default",
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+	return d.StoreChatSession(sess)
+}
+
+// StoreChatSession saves or updates a chat session.
+func (d *DB) StoreChatSession(s *models.ChatSession) error {
+	key := []byte(fmt.Sprintf("%s%s:%s", chatSessionPrefix, s.UserID, s.ID))
+	data, err := json.Marshal(s)
+	if err != nil {
+		return err
+	}
+	return d.badgerDB.Update(func(txn *badger.Txn) error {
+		return txn.Set(key, data)
+	})
+}
+
+// GetChatSession returns a session by user and session ID.
+func (d *DB) GetChatSession(userID, sessionID string) (*models.ChatSession, error) {
+	key := []byte(fmt.Sprintf("%s%s:%s", chatSessionPrefix, userID, sessionID))
+	var sess *models.ChatSession
+	err := d.badgerDB.View(func(txn *badger.Txn) error {
+		item, err := txn.Get(key)
+		if err != nil {
+			return err
+		}
+		return item.Value(func(val []byte) error {
+			sess = &models.ChatSession{}
+			return json.Unmarshal(val, sess)
+		})
+	})
+	if err != nil {
+		return nil, err
+	}
+	return sess, nil
+}
+
+// ListChatSessions returns all sessions for a user, newest first.
+func (d *DB) ListChatSessions(userID string) ([]models.ChatSession, error) {
+	prefix := []byte(fmt.Sprintf("%s%s:", chatSessionPrefix, userID))
+	var list []models.ChatSession
+	err := d.badgerDB.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.Prefix = prefix
+		it := txn.NewIterator(opts)
+		defer it.Close()
+		for it.Rewind(); it.Valid(); it.Next() {
+			item := it.Item()
+			var s models.ChatSession
+			if err := item.Value(func(val []byte) error {
+				return json.Unmarshal(val, &s)
+			}); err != nil {
+				return err
+			}
+			list = append(list, s)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	// Sort by UpdatedAt desc (newest first)
+	sort.Slice(list, func(i, j int) bool {
+		return list[i].UpdatedAt > list[j].UpdatedAt
+	})
+	return list, nil
+}
+
+// AppendChatMessage appends one message to a session and updates session UpdatedAt.
+// If the session does not exist, it is created (so any session_id from the client is valid).
+func (d *DB) AppendChatMessage(userID, sessionID string, msg *models.StoredChatMessage) error {
+	if msg.Timestamp == "" {
+		msg.Timestamp = time.Now().Format(time.RFC3339)
+	}
+	ts := time.Now().UnixNano()
+	msgKey := []byte(fmt.Sprintf("%s%s:%s:%020d", chatMessagePrefix, userID, sessionID, ts))
+	msgData, err := json.Marshal(msg)
+	if err != nil {
+		return err
+	}
+	now := time.Now().Format(time.RFC3339)
+	return d.badgerDB.Update(func(txn *badger.Txn) error {
+		if err := txn.Set(msgKey, msgData); err != nil {
+			return err
+		}
+		sessKey := []byte(fmt.Sprintf("%s%s:%s", chatSessionPrefix, userID, sessionID))
+		item, err := txn.Get(sessKey)
+		var s models.ChatSession
+		if err != nil {
+			// Session missing: create it so first message with this id works
+			s = models.ChatSession{
+				ID:        sessionID,
+				UserID:    userID,
+				Title:     "New chat",
+				CreatedAt: now,
+				UpdatedAt: now,
+			}
+		} else {
+			_ = item.Value(func(val []byte) error {
+				return json.Unmarshal(val, &s)
+			})
+			s.UpdatedAt = now
+		}
+		sessData, _ := json.Marshal(&s)
+		return txn.Set(sessKey, sessData)
+	})
+}
+
+// GetChatSessionMessages returns all messages for a session in order.
+func (d *DB) GetChatSessionMessages(userID, sessionID string) ([]models.StoredChatMessage, error) {
+	prefix := []byte(fmt.Sprintf("%s%s:%s:", chatMessagePrefix, userID, sessionID))
+	var list []models.StoredChatMessage
+	err := d.badgerDB.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.Prefix = prefix
+		it := txn.NewIterator(opts)
+		defer it.Close()
+		for it.Rewind(); it.Valid(); it.Next() {
+			item := it.Item()
+			var m models.StoredChatMessage
+			if err := item.Value(func(val []byte) error {
+				return json.Unmarshal(val, &m)
+			}); err != nil {
+				return err
+			}
+			list = append(list, m)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return list, nil
+}
+
+// UpdateChatSessionTitle updates session title and UpdatedAt.
+func (d *DB) UpdateChatSessionTitle(userID, sessionID, title string) error {
+	sess, err := d.GetChatSession(userID, sessionID)
+	if err != nil || sess == nil {
+		return fmt.Errorf("session not found")
+	}
+	sess.Title = title
+	sess.UpdatedAt = time.Now().Format(time.RFC3339)
+	return d.StoreChatSession(sess)
+}
+
+// DeleteChatSession removes the session and all its messages.
+func (d *DB) DeleteChatSession(userID, sessionID string) error {
+	return d.badgerDB.Update(func(txn *badger.Txn) error {
+		sessKey := []byte(fmt.Sprintf("%s%s:%s", chatSessionPrefix, userID, sessionID))
+		if err := txn.Delete(sessKey); err != nil {
+			return err
+		}
+		prefix := []byte(fmt.Sprintf("%s%s:%s:", chatMessagePrefix, userID, sessionID))
+		opts := badger.DefaultIteratorOptions
+		opts.Prefix = prefix
+		it := txn.NewIterator(opts)
+		defer it.Close()
+		for it.Rewind(); it.Valid(); it.Next() {
+			if err := txn.Delete(it.Item().KeyCopy(nil)); err != nil {
+				return err
+			}
+		}
+		return nil
 	})
 }
 

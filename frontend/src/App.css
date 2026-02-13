@@ -1,9 +1,9 @@
 .app {
   width: 100%;
-  max-width: 900px;
+  max-width: 1100px;
   height: 90vh;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   background: #1e1e1e;
   border-radius: 20px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
@@ -11,10 +11,65 @@
   border: 1px solid #303030;
 }
 
+.chat-sidebar {
+  width: 220px;
+  min-width: 220px;
+  background: #252525;
+  border-right: 1px solid #3a3a3a;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 0;
+}
+.sidebar-new-chat {
+  margin: 0 12px 12px;
+  padding: 10px 14px;
+  background: #FF8C00;
+  color: #1a1a1a;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+.sidebar-new-chat:hover {
+  background: #FF7F00;
+}
+.sidebar-sessions {
+  overflow-y: auto;
+  flex: 1;
+}
+.sidebar-session {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 10px 16px;
+  background: transparent;
+  border: none;
+  color: #e0e0e0;
+  font-size: 0.9rem;
+  cursor: pointer;
+  border-left: 3px solid transparent;
+}
+.sidebar-session:hover {
+  background: #2a2a2a;
+}
+.sidebar-session.active {
+  background: #2a2a2a;
+  border-left-color: #FF8C00;
+  color: #fff;
+}
+.sidebar-session-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+
 .chat-container {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  flex: 1;
+  min-width: 0;
 }
 
 .chat-header {
