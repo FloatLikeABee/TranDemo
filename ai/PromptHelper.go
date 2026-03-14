@@ -250,6 +250,80 @@ Rules:
 	return systemPrompt, userPrompt
 }
 
+// BuildTransportationFieldGatheringPrompt builds the system prompt for the Student School Transportation registration flow.
+// The form has 14 fields (Opp City Schools Transportation Form). System prompt must be clear, detailed, and precise.
+func BuildTransportationFieldGatheringPrompt(conversationHistory []models.RegConvTurn, formFields []models.FormField, latestUserMessage string) (systemPrompt string, conversationForModel string) {
+	var fieldsDesc strings.Builder
+	fieldsDesc.WriteString("You are a school transportation registration assistant. The parent/guardian is requesting bus transportation for a student. Collect ALL of the following fields. Use the exact field names as JSON keys.\n\n")
+	fieldsDesc.WriteString("REQUIRED fields (must have a value before replying complete):\n")
+	for _, f := range formFields {
+		if f.Required {
+			fieldsDesc.WriteString(fmt.Sprintf("  - %s (field name: %s) — type: %s. %s\n", f.Label, f.Name, f.Type, f.Placeholder))
+		}
+	}
+	fieldsDesc.WriteString("\nOPTIONAL fields (include if provided, otherwise omit or leave empty):\n")
+	for _, f := range formFields {
+		if !f.Required {
+			fieldsDesc.WriteString(fmt.Sprintf("  - %s (field name: %s) — type: %s\n", f.Label, f.Name, f.Type))
+		}
+	}
+	fieldsDesc.WriteString(`
+RULES:
+1. Output ONLY valid JSON. No markdown code fences, no explanation, no text before or after the JSON.
+2. When you have values for ALL required fields (from the conversation and latest message combined), reply with exactly:
+   {"complete":true,"answers":{"school_year":"...","school":"...","student_name":"...","grade":"...","address":"...","city":"...","state":"...","zip":"...","transportation_needed":"...","parent_guardian_name":"...","telephone":"...","bus_start_date":"...", ...}}
+   Include every field we know; use the exact keys above. Optional fields (bus_color, online_form_completed) may be omitted if not provided.
+3. When any required field is still missing, reply with exactly:
+   {"complete":false,"ask":"A short, friendly question asking for the missing information (one or two items at a time)."}
+4. Field-specific rules:
+   - school_year: e.g. "2024-2025" or "2025-2026".
+   - school: name of the school (text); if user says a school name, use it.
+   - telephone: must include area code; note in your "ask" that the number must be an active number.
+   - bus_start_date: use YYYY-MM-DD format.
+   - transportation_needed: if user says pick-up, drop-off, or both, map to "Pick-up only", "Drop-off only", or "Both pick-up and drop-off".
+5. Infer from context: e.g. "my son Jake in 3rd grade" gives student_name and grade; "we're at 123 Main St, Springfield" gives address, city (if Springfield is the city).
+`)
+	var convBuilder strings.Builder
+	for _, t := range conversationHistory {
+		convBuilder.WriteString(fmt.Sprintf("%s: %s\n", t.Role, t.Content))
+	}
+	convBuilder.WriteString("user: " + latestUserMessage)
+	conversationForModel = convBuilder.String()
+	systemPrompt = fieldsDesc.String()
+	return systemPrompt, conversationForModel
+}
+
+// BuildTransportationFieldGatheringPromptWithCurrent builds a prompt for updating existing transportation answers (confirmation-edit flow).
+func BuildTransportationFieldGatheringPromptWithCurrent(formFields []models.FormField, currentAnswers map[string]interface{}, userMessage string) (systemPrompt string, userPrompt string) {
+	var fieldsDesc strings.Builder
+	fieldsDesc.WriteString("You are the school transportation registration assistant. The user has already provided the following values and is now requesting a change. Merge their request into the current values.\n\n")
+	fieldsDesc.WriteString("Form fields (use these exact names as keys):\n")
+	for _, f := range formFields {
+		req := "required"
+		if !f.Required {
+			req = "optional"
+		}
+		fieldsDesc.WriteString(fmt.Sprintf("  - %s (%s, %s)\n", f.Name, f.Label, req))
+	}
+	var currentJSON string
+	if len(currentAnswers) > 0 {
+		b, _ := json.Marshal(currentAnswers)
+		currentJSON = string(b)
+	} else {
+		currentJSON = "{}"
+	}
+	fieldsDesc.WriteString("\nCurrent values (JSON): " + currentJSON + "\n\n")
+	fieldsDesc.WriteString(`RULES:
+- Reply with ONLY valid JSON. No markdown, no code fences, no explanation.
+- If you can apply the user's change and have ALL required fields filled, reply: {"complete":true,"answers":{...}} with every field name as key and the updated value. Keep existing values for any field not being changed.
+- If you need clarification, reply: {"complete":false,"ask":"A short question."}
+- Use exact field names: school_year, school, student_name, grade, address, city, state, zip, transportation_needed, parent_guardian_name, telephone, bus_start_date; optional: bus_color, online_form_completed.
+- bus_start_date must be YYYY-MM-DD. telephone must include area code.`)
+	systemPrompt = fieldsDesc.String()
+	userPrompt = "User says: " + userMessage
+	return systemPrompt, userPrompt
+}
+
 // BuildDocumentIntentPrompt builds a prompt to classify document intent: FORM, RESEARCH, or SUMMARY.
 func BuildDocumentIntentPrompt(userMessage, extractedText, aiResult string) string {
 	return fmt.Sprintf(`You are a classifier. Based on the user's message and the extracted/summarized document content, decide the single best action.

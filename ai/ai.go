@@ -578,3 +578,24 @@ func (a *AIService) RegistrationFieldGatheringWithCurrent(ctx context.Context, f
 	}
 	return a.callDashScopeAPI(ctx, messages)
 }
+
+// TransportationFieldGathering asks the model whether all required transportation form fields are collected or what to ask next.
+// Uses the detailed Student School Transportation form prompt. Returns raw reply (JSON string).
+func (a *AIService) TransportationFieldGathering(ctx context.Context, conversationHistory []models.RegConvTurn, formFields []models.FormField, latestUserMessage string) (string, error) {
+	sys, conv := BuildTransportationFieldGatheringPrompt(conversationHistory, formFields, latestUserMessage)
+	messages := []DashScopeMessage{
+		{Role: "system", Content: sys},
+		{Role: "user", Content: conv},
+	}
+	return a.callDashScopeAPI(ctx, messages)
+}
+
+// TransportationFieldGatheringWithCurrent merges the user's change request into current transportation answers (confirmation-edit flow).
+func (a *AIService) TransportationFieldGatheringWithCurrent(ctx context.Context, formFields []models.FormField, currentAnswers map[string]interface{}, userMessage string) (string, error) {
+	sys, user := BuildTransportationFieldGatheringPromptWithCurrent(formFields, currentAnswers, userMessage)
+	messages := []DashScopeMessage{
+		{Role: "system", Content: sys},
+		{Role: "user", Content: user},
+	}
+	return a.callDashScopeAPI(ctx, messages)
+}

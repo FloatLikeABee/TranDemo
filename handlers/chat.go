@@ -161,6 +161,23 @@ func (h *Handlers) ChatHandler(c *gin.Context) {
 		}
 	}
 
+	// PRIORITY 2.6: Transportation registration flow — active session first
+	transportState, transportErr := h.db.GetTransportationStateByUserID(userID)
+	if transportErr == nil && transportState != nil && transportState.Step != "complete" && transportState.Step != "" {
+		log.Printf("[CHAT HANDLER] User %s has active transportation registration session", userID)
+		response, err := h.handleTransportationFlow(c, userID, req.Message)
+		if err != nil {
+			log.Printf("[CHAT HANDLER] Error in transportation flow: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to process transportation registration: %v", err)})
+			return
+		}
+		if response != nil {
+			persistChatExchange(h, userID, sessionID, req.Message, response)
+			c.JSON(http.StatusOK, response)
+			return
+		}
+	}
+
 	// PRIORITY 3: New registration intent (e.g. "I want to register a student")
 	if isRegisterStudentRequest(req.Message) {
 		log.Printf("[CHAT HANDLER] Detected register-student (or similar) request from user %s", userID)
@@ -168,6 +185,22 @@ func (h *Handlers) ChatHandler(c *gin.Context) {
 		if err != nil {
 			log.Printf("[CHAT HANDLER] Error in registration flow: %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to process registration: %v", err)})
+			return
+		}
+		if response != nil {
+			persistChatExchange(h, userID, sessionID, req.Message, response)
+			c.JSON(http.StatusOK, response)
+			return
+		}
+	}
+
+	// PRIORITY 3.5: New transportation registration intent (e.g. "I want to register transportation for a student")
+	if isTransportationRegistrationRequest(req.Message) {
+		log.Printf("[CHAT HANDLER] Detected transportation registration (or similar) request from user %s", userID)
+		response, err := h.handleTransportationFlow(c, userID, req.Message)
+		if err != nil {
+			log.Printf("[CHAT HANDLER] Error in transportation flow: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to process transportation registration: %v", err)})
 			return
 		}
 		if response != nil {

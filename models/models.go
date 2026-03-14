@@ -172,7 +172,7 @@ type RegConvTurn struct {
 
 type RegistrationState struct {
 	ConversationID    string                 `json:"conversation_id"`    // unique session id
-	Step              string                 `json:"step"`                 // "selecting_form" | "gathering_fields" | "complete"
+	Step              string                 `json:"step"`                 // "selecting_form" | "gathering_fields" | "pending_confirmation" | "complete"
 	FormID            string                 `json:"form_id,omitempty"`    // chosen form template id (internal, not shown to AI)
 	FormName          string                 `json:"form_name,omitempty"`  // form name for context
 	UserType          string                 `json:"user_type,omitempty"`  // student | staff from form
@@ -182,4 +182,8 @@ type RegistrationState struct {
 	ExchangeCount     int                    `json:"exchange_count"`
 	CreatedAt         string                 `json:"created_at,omitempty"`
 }
+
+// TransportationRegistrationState holds state for the "register/request transportation for a student" chat flow.
+// Reuses the same shape as RegistrationState; stored under a separate key (transportation:{userID}) in DB.
+type TransportationRegistrationState = RegistrationState
 

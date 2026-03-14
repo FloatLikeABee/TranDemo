@@ -673,6 +673,45 @@ func (d *DB) DeleteRegistrationState(userID string) error {
 	})
 }
 
+// Transportation registration flow state (one active session per user; key: transportation:{userID})
+
+func (d *DB) StoreTransportationState(userID string, state *models.TransportationRegistrationState) error {
+	return d.badgerDB.Update(func(txn *badger.Txn) error {
+		key := []byte(fmt.Sprintf("transportation:%s", userID))
+		data, err := json.Marshal(state)
+		if err != nil {
+			return err
+		}
+		return txn.Set(key, data)
+	})
+}
+
+func (d *DB) GetTransportationStateByUserID(userID string) (*models.TransportationRegistrationState, error) {
+	var state *models.TransportationRegistrationState
+	err := d.badgerDB.View(func(txn *badger.Txn) error {
+		key := []byte(fmt.Sprintf("transportation:%s", userID))
+		item, err := txn.Get(key)
+		if err != nil {
+			return err
+		}
+		return item.Value(func(val []byte) error {
+			state = &models.TransportationRegistrationState{}
+			return json.Unmarshal(val, state)
+		})
+	})
+	if err != nil {
+		return nil, err
+	}
+	return state, nil
+}
+
+func (d *DB) DeleteTransportationState(userID string) error {
+	return d.badgerDB.Update(func(txn *badger.Txn) error {
+		key := []byte(fmt.Sprintf("transportation:%s", userID))
+		return txn.Delete(key)
+	})
+}
+
 // Chat session storage (efficient prefix-based keys for list/get messages).
 
 const (
