@@ -845,7 +845,7 @@ func (d *DB) AppendChatMessage(userID, sessionID string, msg *models.StoredChatM
 	})
 }
 
-// GetChatSessionMessages returns all messages for a session in order.
+// GetChatSessionMessages returns all messages for a session in chronological order (oldest first).
 func (d *DB) GetChatSessionMessages(userID, sessionID string) ([]models.StoredChatMessage, error) {
 	prefix := []byte(fmt.Sprintf("%s%s:%s:", chatMessagePrefix, userID, sessionID))
 	var list []models.StoredChatMessage
@@ -869,6 +869,10 @@ func (d *DB) GetChatSessionMessages(userID, sessionID string) ([]models.StoredCh
 	if err != nil {
 		return nil, err
 	}
+	// Sort by timestamp so order is always chronological (user/assistant pairs preserved)
+	sort.Slice(list, func(i, j int) bool {
+		return list[i].Timestamp < list[j].Timestamp
+	})
 	return list, nil
 }
 

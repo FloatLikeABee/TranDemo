@@ -21,22 +21,26 @@ type ChatSession struct {
 
 // StoredChatMessage is one message in a session (user or assistant), stored in DB.
 type StoredChatMessage struct {
-	Role            string                       `json:"role"` // "user" | "assistant" | "error"
-	Content         string                       `json:"content"`
-	SQL             string                       `json:"sql,omitempty"`
-	ConfirmationCard *RegistrationConfirmationCard `json:"confirmation_card,omitempty"`
-	ProposedForm    *ProposedFormCard             `json:"proposed_form,omitempty"`
-	ResearchContent string                       `json:"research_content,omitempty"`
-	Timestamp       string                       `json:"timestamp"`
+	Role              string                       `json:"role"` // "user" | "assistant" | "error"
+	Content           string                       `json:"content"`
+	SQL               string                       `json:"sql,omitempty"`
+	ConfirmationCard  *RegistrationConfirmationCard `json:"confirmation_card,omitempty"`
+	ProposedForm      *ProposedFormCard             `json:"proposed_form,omitempty"`
+	ResearchContent   string                       `json:"research_content,omitempty"`
+	ReportTableHTML   string                       `json:"report_table_html,omitempty"`
+	ReportPDFFilename string                       `json:"report_pdf_filename,omitempty"`
+	Timestamp         string                       `json:"timestamp"`
 }
 
 type ChatResponse struct {
-	Response         string                       `json:"response"`
-	SQL              string                       `json:"sql,omitempty"`
-	FormJSON         string                       `json:"form_json,omitempty"`
-	ConfirmationCard *RegistrationConfirmationCard `json:"confirmation_card,omitempty"`
-	ProposedForm     *ProposedFormCard             `json:"proposed_form,omitempty"`
-	ResearchContent  string                       `json:"research_content,omitempty"`
+	Response          string                       `json:"response"`
+	SQL               string                       `json:"sql,omitempty"`
+	FormJSON          string                       `json:"form_json,omitempty"`
+	ConfirmationCard  *RegistrationConfirmationCard `json:"confirmation_card,omitempty"`
+	ProposedForm      *ProposedFormCard             `json:"proposed_form,omitempty"`
+	ResearchContent   string                       `json:"research_content,omitempty"`
+	ReportTableHTML   string                       `json:"report_table_html,omitempty"`   // HTML table for chat display
+	ReportPDFFilename string                       `json:"report_pdf_filename,omitempty"` // PDF filename for download (e.g. /api/results/pdf/{filename})
 }
 
 // ProposedFormCard is sent when a form is generated from document upload; user must confirm before saving.

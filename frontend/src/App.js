@@ -7,6 +7,10 @@ import './App.css';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:9090';
 
+const CHAT_THEME_KEY = 'forms-ui-theme';
+const CHAT_THEME_DEFAULT = 'default';
+const CHAT_THEME_NIGHTLY = 'nightly';
+
 // Polyfill for browsers that don't support speech recognition
 if (!window.SpeechRecognition && !window.webkitSpeechRecognition) {
   // Create a mock implementation
@@ -32,6 +36,7 @@ function App() {
   const [attachedFile, setAttachedFile] = useState(null); // Image or PDF for upload
   const [sessions, setSessions] = useState([]);
   const [currentSessionId, setCurrentSessionId] = useState('default');
+  const [chatTheme, setChatTheme] = useState(() => localStorage.getItem(CHAT_THEME_KEY) || CHAT_THEME_DEFAULT);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -66,15 +71,18 @@ function App() {
     scrollToBottom();
   }, [messages]);
 
-  // Map API StoredChatMessage to UI message shape
+  // Map API StoredChatMessage to UI message shape (role is case-insensitive so "User" still shows as user)
   const storedToMessage = (m) => {
-    const type = m.role === 'user' ? 'user' : m.role === 'error' ? 'error' : 'assistant';
+    const role = (m.role || '').toLowerCase();
+    const type = role === 'user' ? 'user' : role === 'error' ? 'error' : 'assistant';
     const base = { type, content: m.content || '' };
     if (type === 'assistant') {
       if (m.sql) base.sql = m.sql;
       if (m.confirmation_card) base.confirmationCard = m.confirmation_card;
       if (m.proposed_form) base.proposedForm = m.proposed_form;
       if (m.research_content) base.researchContent = m.research_content;
+      if (m.report_table_html) base.reportTableHTML = m.report_table_html;
+      if (m.report_pdf_filename) base.reportPDFFilename = m.report_pdf_filename;
     }
     return base;
   };
@@ -107,6 +115,10 @@ function App() {
   useEffect(() => {
     loadSessions();
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem(CHAT_THEME_KEY, chatTheme);
+  }, [chatTheme]);
 
   useEffect(() => {
     if (!currentSessionId) return;
@@ -489,6 +501,8 @@ function App() {
               const confirmationCard = response.data.confirmation_card || null;
               const proposedForm = response.data.proposed_form || null;
               const researchContent = response.data.research_content || null;
+              const reportTableHTML = response.data.report_table_html || null;
+              const reportPDFFilename = response.data.report_pdf_filename || null;
 
               setMessages(prev => [...prev, {
                 type: 'assistant',
@@ -496,7 +510,9 @@ function App() {
                 sql: sql,
                 confirmationCard: confirmationCard,
                 proposedForm: proposedForm,
-                researchContent: researchContent
+                researchContent: researchContent,
+                reportTableHTML: reportTableHTML,
+                reportPDFFilename: reportPDFFilename
               }]);
             }).catch(error => {
               console.error('Error:', error);
@@ -580,6 +596,8 @@ function App() {
       const confirmationCard = response.data.confirmation_card || null;
       const proposedForm = response.data.proposed_form || null;
       const researchContent = response.data.research_content || null;
+      const reportTableHTML = response.data.report_table_html || null;
+      const reportPDFFilename = response.data.report_pdf_filename || null;
 
       setMessages(prev => [...prev, {
         type: 'assistant',
@@ -587,7 +605,9 @@ function App() {
         sql: sql,
         confirmationCard: confirmationCard,
         proposedForm: proposedForm,
-        researchContent: researchContent
+        researchContent: researchContent,
+        reportTableHTML: reportTableHTML,
+        reportPDFFilename: reportPDFFilename
       }]);
       loadSessions();
     } catch (error) {
@@ -851,8 +871,10 @@ function App() {
     setCurrentSessionId(sessionId);
   };
 
+  const chatThemeClass = chatTheme === CHAT_THEME_NIGHTLY ? 'theme-nightly' : 'theme-default';
+
   return (
-    <div className="app">
+    <div className={`app ${chatThemeClass}`}>
       <aside className="chat-sidebar">
         <button type="button" className="sidebar-new-chat" onClick={handleNewChat}>
           + New chat
@@ -874,6 +896,25 @@ function App() {
         <div className="chat-header">
           <h1 className="app-title">Transfinder Form Assistant</h1>
           <div className="header-actions">
+            <span className="chat-theme-switcher">
+              <span className="chat-theme-label">Theme:</span>
+              <button
+                type="button"
+                className={`chat-theme-btn ${chatTheme === CHAT_THEME_DEFAULT ? 'active' : ''}`}
+                onClick={() => setChatTheme(CHAT_THEME_DEFAULT)}
+                title="Default (orange)"
+              >
+                Default
+              </button>
+              <button
+                type="button"
+                className={`chat-theme-btn ${chatTheme === CHAT_THEME_NIGHTLY ? 'active' : ''}`}
+                onClick={() => setChatTheme(CHAT_THEME_NIGHTLY)}
+                title="Nightly (deep purple & blue)"
+              >
+                Nightly
+              </button>
+            </span>
             <button
               className={`voice-reading-toggle ${voiceReadingEnabled ? 'enabled' : 'disabled'}`}
               onClick={() => {
@@ -946,6 +987,21 @@ function App() {
                 {msg.type === 'assistant' && (
                   <div className="message-bubble assistant-bubble">
                     <div className="response-text">{msg.content.replace(/Here's the SQL query based on your request:\n\n/g, '')}</div>
+                    {msg.reportTableHTML && (
+                      <div className="report-table-wrapper">
+                        <div className="report-table-inner" dangerouslySetInnerHTML={{ __html: msg.reportTableHTML }} />
+                        {msg.reportPDFFilename && (
+                          <a
+                            href={`${API_BASE_URL}/api/results/pdf/${msg.reportPDFFilename}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="report-pdf-download"
+                          >
+                            Download PDF
+                          </a>
+                        )}
+                      </div>
+                    )}
                     {msg.proposedForm && msg.proposedForm.form_template && (
                       <div className="proposed-form-card">
                         <h3 className="proposed-form-title">{msg.proposedForm.form_template.name}</h3>
@@ -1062,7 +1118,7 @@ function App() {
                         </div>
                       </div>
                     )}
-                    {msg.sql && (
+                    {msg.sql && !msg.reportTableHTML && (
                       <div className="sql-block">
                         <div className="sql-header">
                           <span>SQL Query</span>

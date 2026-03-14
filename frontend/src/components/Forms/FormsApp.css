@@ -1,20 +1,63 @@
+/* Theme variables: default (orange) */
+.forms-app.theme-default {
+  --forms-bg: #1a1a1a;
+  --forms-card: #2a2a2a;
+  --forms-border: #3a3a3a;
+  --forms-border-light: #2a2a2a;
+  --forms-accent: #FF8C00;
+  --forms-accent-hover: #FFA500;
+  --forms-accent-text: #1a1a1a;
+  --forms-text: #e0e0e0;
+  --forms-text-muted: #b0b0b0;
+  --forms-input-bg: #1a1a1a;
+  --forms-overlay: rgba(0, 0, 0, 0.7);
+  --forms-accent-shadow: rgba(255, 140, 0, 0.3);
+}
+
+/* Theme: nightly (deep purple & dark blue) */
+.forms-app.theme-nightly {
+  --forms-bg: #0f0a1e;
+  --forms-card: #1e1b4b;
+  --forms-border: #312e81;
+  --forms-border-light: #252250;
+  --forms-accent: #7c3aed;
+  --forms-accent-hover: #8b5cf6;
+  --forms-accent-text: #e0e0e0;
+  --forms-text: #e0e0e0;
+  --forms-text-muted: #a5b4fc;
+  --forms-input-bg: #1e1b4b;
+  --forms-overlay: rgba(15, 10, 30, 0.9);
+  --forms-accent-shadow: rgba(124, 58, 237, 0.4);
+}
+
+/* Fill viewport so parent #root padding doesn’t cause page scroll */
 .forms-app {
-  min-height: 100vh;
-  background: #1a1a1a;
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--forms-bg);
+}
+
+/* Only this area scrolls when content exceeds viewport */
+.forms-scroll-area {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .forms-nav {
-  background: #2a2a2a;
-  border-bottom: 2px solid #FF8C00;
-  padding: 1rem 2rem;
-  position: sticky;
-  top: 0;
+  flex-shrink: 0;
+  background: var(--forms-card);
+  border-bottom: 2px solid var(--forms-accent);
+  padding: 0.5rem 2rem;
   z-index: 1000;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
 }
 
 .forms-nav .nav-container {
-  max-width: 1400px;
+  max-width: 1110px;
   margin: 0 auto;
   display: flex;
   justify-content: space-between;
@@ -26,7 +69,7 @@
 .forms-nav .logo {
   font-size: 1.5rem;
   font-weight: bold;
-  color: #FF8C00;
+  color: var(--forms-accent);
   text-decoration: none;
   white-space: nowrap;
 }
@@ -47,7 +90,7 @@
 }
 
 .forms-nav .nav-links a {
-  color: #e0e0e0;
+  color: var(--forms-text);
   text-decoration: none;
   padding: 0.5rem 1rem;
   border-radius: 4px;
@@ -58,20 +101,58 @@
 }
 
 .forms-nav .nav-links a:hover {
-  background: #3a3a3a;
-  color: #FF8C00;
+  background: var(--forms-border);
+  color: var(--forms-accent);
   transform: translateY(-1px);
 }
 
 .forms-nav .nav-links a.active {
-  background: #FF8C00;
-  color: #1a1a1a;
+  background: var(--forms-accent);
+  color: var(--forms-accent-text);
   font-weight: bold;
+}
+
+/* Theme switcher in nav: no border, wide gap from Forms/Answers */
+.theme-switcher {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: 100px;
+  padding: 0;
+}
+
+.theme-label {
+  font-size: 0.8rem;
+  color: var(--forms-text-muted);
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.theme-btn {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.85rem;
+  border-radius: 4px;
+  border: 1px solid var(--forms-border);
+  background: var(--forms-bg);
+  color: var(--forms-text);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.theme-btn:hover {
+  border-color: var(--forms-accent);
+  color: var(--forms-accent);
+}
+
+.theme-btn.active {
+  background: var(--forms-accent);
+  color: var(--forms-accent-text);
+  border-color: var(--forms-accent);
 }
 
 @media (max-width: 768px) {
   .forms-nav {
-    padding: 1rem 1.5rem;
+    padding: 0.5rem 1.5rem;
   }
 
   .forms-nav .nav-container {

@@ -105,6 +105,7 @@ func main() {
 	// Result file routes
 	r.GET("/api/results/files", h.ListResultFilesHandler)
 	r.GET("/api/results/file/:filename", h.GetResultFileHandler)
+	r.GET("/api/results/pdf/:filename", h.ServeResultPDFHandler)
 	r.POST("/api/results/generate-html", h.GenerateHTMLHandler)
 	r.GET("/api/results/html/:filename", h.ServeHTMLHandler)
 	

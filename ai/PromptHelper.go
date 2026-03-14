@@ -27,6 +27,58 @@ func BuildSQLPrompt(userPrompt string, sqlFiles []models.SQLFile) string {
 	return contextBuilder.String()
 }
 
+// BuildStudentReportSQLPrompt is used when the reference is student.sql. Instructs the AI to
+// infer which fields the user wants from the prompt, or pick the most important columns if unspecified.
+func BuildStudentReportSQLPrompt(userPrompt string, sqlFiles []models.SQLFile) string {
+	var contextBuilder strings.Builder
+	contextBuilder.WriteString("You are a SQL expert assistant. Below is a reference SQL file (student.sql). Use it as the base structure.\n\n")
+
+	for _, sqlFile := range sqlFiles {
+		contextBuilder.WriteString(fmt.Sprintf("--- SQL File: %s ---\n", sqlFile.Name))
+		contextBuilder.WriteString(sqlFile.Content)
+		contextBuilder.WriteString("\n\n")
+	}
+
+	contextBuilder.WriteString("--- User Request ---\n")
+	contextBuilder.WriteString(userPrompt)
+	contextBuilder.WriteString("\n\n")
+	contextBuilder.WriteString(`RULES FOR THE OUTPUT QUERY:
+1. Detect from the user's prompt which fields/columns they want to see. If they mention specific columns (e.g. name, grade, school), include those.
+2. If the user did NOT specify which fields they want, select the most important columns by your judgment (e.g. identifiers and key info such as Stud_ID, Last_Name, First_Name, grade/Grade, Dob, School or SCHOOLNAME, and other relevant columns as appropriate).
+3. Keep the same query structure (WITH clauses, CTEs, FROM, JOINs) from the reference as needed so the query runs correctly, but in the final SELECT list only include the columns you chose (user-requested or your selection).
+4. Return only the complete SQL query. No explanation, no markdown.`)
+
+	return contextBuilder.String()
+}
+
+// BuildReportTablePrompt builds a prompt so the model returns a clean HTML table from query result data for display in the chat panel.
+func BuildReportTablePrompt(columns []string, rows [][]interface{}, title string) (systemPrompt string, userPrompt string) {
+	var data strings.Builder
+	data.WriteString("Columns: " + strings.Join(columns, ", ") + "\n\n")
+	data.WriteString("Rows (first column is header names):\n")
+	for i, row := range rows {
+		parts := make([]string, len(row))
+		for j, v := range row {
+			if v == nil {
+				parts[j] = ""
+			} else {
+				parts[j] = fmt.Sprintf("%v", v)
+			}
+		}
+		data.WriteString(fmt.Sprintf("Row %d: %s\n", i+1, strings.Join(parts, " | ")))
+	}
+	systemPrompt = `You are a report formatter. You will be given the column names and rows of a SQL query result. Your task is to return a single, clean HTML table suitable for display in a chat panel.
+
+Rules:
+- Return ONLY the HTML for one <table> element. No markdown, no code fences, no explanation, no surrounding <html> or <body>.
+- Use <table>, <thead>, <tbody>, <tr>, <th>, <td>. Add attribute style="border-collapse: collapse; width: 100%;" to the table.
+- Use <th> for the header row (column names). Use reasonable padding (e.g. style="padding: 6px 8px; text-align: left; border: 1px solid #ddd;") for th and td.
+- Keep the table compact and readable. Truncate very long cell text if needed (e.g. max 80 chars) to avoid huge tables.
+- Escape any < or > in cell content so the HTML is valid.`
+	userPrompt = "Title: " + title + "\n\n" + data.String() + "\n\nReturn only the HTML <table>...</table>."
+	return systemPrompt, userPrompt
+}
+
 // BuildFormPrompt constructs a prompt for form JSON generation based on user request and sample JSON
 func BuildFormPrompt(userPrompt string, sampleJSON string) string {
 	var promptBuilder strings.Builder

@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"path/filepath"
 
 	"github.com/gin-gonic/gin"
 )
@@ -73,5 +74,39 @@ func (h *Handlers) GetResultFileHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, resultFile)
+}
+
+// ServeResultPDFHandler serves a report PDF file for download
+// @Summary      Download report PDF
+// @Description  Serve a report PDF file by filename (e.g. report_123.pdf)
+// @Tags         Results
+// @Param        filename  path      string  true  "PDF filename"
+// @Success      200      file     binary  "PDF file"
+// @Failure      400      {object}  map[string]string  "Filename required or not a PDF"
+// @Failure      404      {object}  map[string]string  "File not found"
+// @Failure      503      {object}  map[string]string  "SQL Server not configured"
+// @Router       /api/results/pdf/{filename} [get]
+func (h *Handlers) ServeResultPDFHandler(c *gin.Context) {
+	filename := c.Param("filename")
+	if filename == "" || filepath.Ext(filename) != ".pdf" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Valid PDF filename is required"})
+		return
+	}
+
+	if h.sqlService == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "SQL Server service is not configured"})
+		return
+	}
+
+	resultsStorage := h.sqlService.GetResultsStorage()
+	if resultsStorage == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Results storage is not initialized"})
+		return
+	}
+
+	filePath := filepath.Join(resultsStorage.GetResultsDir(), filename)
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
+	c.Header("Content-Type", "application/pdf")
+	c.File(filePath)
 }
 

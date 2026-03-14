@@ -85,6 +85,11 @@ func (s *SQLServerService) ExecuteQuery(query string) (*models.SQLResult, error)
 }
 
 func (s *SQLServerService) ExecuteQueryWithSave(query string, format string, save bool) (*models.SQLResult, error) {
+	return s.ExecuteQueryWithSaveMaxRows(query, format, save, 0)
+}
+
+// ExecuteQueryWithSaveMaxRows runs the query and optionally saves the result. If maxRows > 0, at most maxRows rows are returned (e.g. 10 for reports).
+func (s *SQLServerService) ExecuteQueryWithSaveMaxRows(query string, format string, save bool, maxRows int) (*models.SQLResult, error) {
 	if s.db == nil {
 		return nil, fmt.Errorf("SQL Server connection is not initialized")
 	}
@@ -107,6 +112,9 @@ func (s *SQLServerService) ExecuteQueryWithSave(query string, format string, sav
 	var resultRows [][]interface{}
 
 	for rows.Next() {
+		if maxRows > 0 && len(resultRows) >= maxRows {
+			break
+		}
 		// Create a slice of interface{} to hold the values
 		values := make([]interface{}, len(columns))
 		valuePtrs := make([]interface{}, len(columns))

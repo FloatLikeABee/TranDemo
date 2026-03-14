@@ -72,7 +72,7 @@ func New(apiKey string, modelName string, cache *cache.Cache) (*AIService, error
 		httpClientLongTimeout: httpClientLongTimeout,
 		apiURL:               "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation",
 		lastRequestTime:      time.Time{},
-		minRequestInterval:   500 * time.Millisecond, // Minimum 500ms between requests
+		minRequestInterval:   3 * time.Second, // Minimum 3s between requests to reduce rate limit hits
 	}, nil
 }
 
@@ -116,14 +116,14 @@ func (a *AIService) callDashScopeAPIWithClient(ctx context.Context, messages []D
 		return "", fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	// Retry logic with exponential backoff for rate limit errors
-	maxRetries := 3
-	baseDelay := 2 * time.Second
+	// Retry logic with progressive backoff for rate limit errors (up to 10 retries, longer cooldown each time)
+	maxRetries := 10
+	baseDelay := 5 * time.Second
 
 	for attempt := 0; attempt <= maxRetries; attempt++ {
 		if attempt > 0 {
-			// Exponential backoff: 2s, 4s, 8s
-			delay := baseDelay * time.Duration(1<<uint(attempt-1))
+			// Progressive cooldown: 5s, 10s, 15s, 20s, ... (5 * attempt seconds per retry)
+			delay := baseDelay * time.Duration(attempt)
 			fmt.Printf("Rate limit hit, retrying after %v (attempt %d/%d)\n", delay, attempt, maxRetries)
 			time.Sleep(delay)
 			// Re-apply rate limiting after backoff
@@ -230,16 +230,32 @@ func (a *AIService) callDashScopeAPIWithClient(ctx context.Context, messages []D
 }
 
 func (a *AIService) GenerateSQL(userPrompt string, sqlFiles []models.SQLFile) (string, error) {
-	// Check cache first
+	return a.generateSQLWithPrompt(userPrompt, sqlFiles, false)
+}
+
+// GenerateSQLForStudentReport uses the student.sql reference and instructs the AI to select
+// user-requested fields or the most important columns when unspecified. Use when sqlFiles contains only student.sql.
+func (a *AIService) GenerateSQLForStudentReport(userPrompt string, sqlFiles []models.SQLFile) (string, error) {
+	return a.generateSQLWithPrompt(userPrompt, sqlFiles, true)
+}
+
+func (a *AIService) generateSQLWithPrompt(userPrompt string, sqlFiles []models.SQLFile, studentReportMode bool) (string, error) {
 	cacheKey := fmt.Sprintf("prompt:%s", userPrompt)
+	if studentReportMode {
+		cacheKey = "studentreport:" + userPrompt
+	}
 	if cached, found := a.cache.Get(cacheKey); found {
 		return cached.(string), nil
 	}
 
 	ctx := context.Background()
 
-	// Build prompt using helper
-	prompt := BuildSQLPrompt(userPrompt, sqlFiles)
+	var prompt string
+	if studentReportMode {
+		prompt = BuildStudentReportSQLPrompt(userPrompt, sqlFiles)
+	} else {
+		prompt = BuildSQLPrompt(userPrompt, sqlFiles)
+	}
 
 	messages := []DashScopeMessage{
 		{
@@ -547,6 +563,25 @@ Corrected message:`, userInput)
 // Used by registration flow and other custom prompts.
 func (a *AIService) GenerateFromMessages(ctx context.Context, messages []DashScopeMessage) (string, error) {
 	return a.callDashScopeAPI(ctx, messages)
+}
+
+// FormatResultAsHTMLTable asks the model to format query result columns and rows as a single HTML table for chat display.
+func (a *AIService) FormatResultAsHTMLTable(ctx context.Context, columns []string, rows [][]interface{}, title string) (string, error) {
+	sys, user := BuildReportTablePrompt(columns, rows, title)
+	messages := []DashScopeMessage{
+		{Role: "system", Content: sys},
+		{Role: "user", Content: user},
+	}
+	raw, err := a.callDashScopeAPI(ctx, messages)
+	if err != nil {
+		return "", err
+	}
+	// Strip markdown code fence if present
+	raw = strings.TrimSpace(raw)
+	raw = strings.TrimPrefix(raw, "```html")
+	raw = strings.TrimPrefix(raw, "```")
+	raw = strings.TrimSuffix(raw, "```")
+	return strings.TrimSpace(raw), nil
 }
 
 // RegistrationFormSelect asks the model to pick one form name from a list (no IDs). Returns the model reply (form name or NONE).

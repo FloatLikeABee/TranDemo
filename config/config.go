@@ -43,6 +43,8 @@ func GetConfig() Config {
 		SitesDir:       getEnv("SITES_DIR", "./sites"),
 		VoiceSamplesDir: getEnv("VOICE_SAMPLES_DIR", "./voice_samples"),
 		ExternalAPIBase:  getEnv("EXTERNAL_API_BASE", "http://localhost:8000"),
+		// Report generation runs SQL against this SQL Server (max 50 rows); equivalent to:
+		// Provider=SQLOLEDB;Initial Catalog=team2_ent;Data Source=192.168.9.9;User ID=tfuser;password=$transfinder2006
 		SQLServer: SQLServerConfig{
 			Server:   getEnv("SQL_SERVER", "192.168.9.9"),
 			Port:     getEnv("SQL_PORT", "1433"),

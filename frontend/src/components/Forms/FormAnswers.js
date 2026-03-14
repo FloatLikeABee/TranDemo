@@ -16,12 +16,13 @@ const FormAnswers = () => {
   const [filteredAnswers, setFilteredAnswers] = useState([]);
   const [forms, setForms] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState('grid');
+  const [viewMode, setViewMode] = useState('table');
   const [formFilter, setFormFilter] = useState('');
   const [userTypeFilter, setUserTypeFilter] = useState('');
   const [userIdFilter, setUserIdFilter] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingAnswer, setEditingAnswer] = useState(null);
+  const [detailAnswer, setDetailAnswer] = useState(null);
   const [alert, setAlert] = useState(null);
   const [answerData, setAnswerData] = useState({
     form_id: '',
@@ -155,6 +156,14 @@ const FormAnswers = () => {
     setSelectedFormFields([]);
   };
 
+  const openDetailModal = (answer) => {
+    setDetailAnswer(answer);
+  };
+
+  const closeDetailModal = () => {
+    setDetailAnswer(null);
+  };
+
   const handleFormChange = async (formId) => {
     setAnswerData(prev => ({ ...prev, form_id: formId, answers: {} }));
     await loadFormFields(formId);
@@ -285,16 +294,16 @@ const FormAnswers = () => {
 
         <div className="view-toggle">
           <button
-            className={viewMode === 'grid' ? 'active' : ''}
-            onClick={() => setViewMode('grid')}
-          >
-            Grid View
-          </button>
-          <button
             className={viewMode === 'table' ? 'active' : ''}
             onClick={() => setViewMode('table')}
           >
             Table View
+          </button>
+          <button
+            className={viewMode === 'grid' ? 'active' : ''}
+            onClick={() => setViewMode('grid')}
+          >
+            Grid View
           </button>
         </div>
 
@@ -325,7 +334,13 @@ const FormAnswers = () => {
                     </div>
                   ))}
                 </div>
-                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', flexWrap: 'wrap' }}>
+                  <button
+                    className="btn btn-small btn-detail"
+                    onClick={() => openDetailModal(answer)}
+                  >
+                    Detail
+                  </button>
                   <button
                     className="btn btn-secondary btn-small"
                     onClick={() => openEditModal(answer.id)}
@@ -366,6 +381,12 @@ const FormAnswers = () => {
                   <td>{formatDate(answer.submitted_at)}</td>
                   <td>
                     <button
+                      className="btn btn-small btn-detail"
+                      onClick={() => openDetailModal(answer)}
+                    >
+                      Detail
+                    </button>
+                    <button
                       className="btn btn-secondary btn-small"
                       onClick={() => openEditModal(answer.id)}
                     >
@@ -385,7 +406,72 @@ const FormAnswers = () => {
         )}
       </div>
 
-      {/* Modal */}
+      {/* Detail modal (read-only) */}
+      {detailAnswer && (
+        <div className="modal-overlay" onClick={closeDetailModal}>
+          <div className="modal-content modal-detail" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Answer Details</h2>
+              <button className="close-btn" onClick={closeDetailModal}>&times;</button>
+            </div>
+            <div className="detail-modal-body">
+              <div className="detail-meta">
+                <div className="detail-meta-row">
+                  <span className="detail-label">Form</span>
+                  <span className="detail-value">{detailAnswer.form_name || 'Unknown'}</span>
+                </div>
+                <div className="detail-meta-row">
+                  <span className="detail-label">User ID</span>
+                  <span className="detail-value">{detailAnswer.user_id}</span>
+                </div>
+                <div className="detail-meta-row">
+                  <span className="detail-label">User Type</span>
+                  <span className="detail-value">
+                    <span className={`badge badge-${detailAnswer.user_type}`}>
+                      {detailAnswer.user_type}
+                    </span>
+                  </span>
+                </div>
+                <div className="detail-meta-row">
+                  <span className="detail-label">Submitted At</span>
+                  <span className="detail-value">{formatDate(detailAnswer.submitted_at)}</span>
+                </div>
+              </div>
+              <div className="detail-answers-section">
+                <h3 className="detail-section-title">Answers</h3>
+                <div className="detail-answers-list">
+                  {Object.entries(detailAnswer.answers || {}).map(([key, value]) => (
+                    <div key={key} className="detail-answer-row">
+                      <span className="detail-answer-key">{key}</span>
+                      <span className="detail-answer-val">{value != null && value !== '' ? String(value) : '—'}</span>
+                    </div>
+                  ))}
+                  {(!detailAnswer.answers || Object.keys(detailAnswer.answers).length === 0) && (
+                    <p className="detail-empty">No answers recorded</p>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="modal-actions">
+              <button type="button" className="btn btn-secondary" onClick={closeDetailModal}>
+                Close
+              </button>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  closeDetailModal();
+                  openEditModal(detailAnswer.id);
+                }}
+              >
+                Edit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create/Edit Modal */}
       {showModal && (
         <div className="modal-overlay" onClick={closeModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>

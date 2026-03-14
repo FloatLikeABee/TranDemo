@@ -31,6 +31,11 @@ func NewResultsStorage(resultsDir string, sitesDir string) (*ResultsStorage, err
 	}, nil
 }
 
+// GetResultsDir returns the results directory path (for saving report PDFs etc.).
+func (r *ResultsStorage) GetResultsDir() string {
+	return r.resultsDir
+}
+
 // GenerateFileName creates a unique filename with timestamp and hash
 func (r *ResultsStorage) GenerateFileName(format string) string {
 	timestamp := time.Now().Format("20060102_150405")

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 
 	"idongivaflyinfa/config"
 	"idongivaflyinfa/models"
+	"idongivaflyinfa/service"
 	"idongivaflyinfa/validation"
 
 	"github.com/gin-gonic/gin"
@@ -307,8 +309,32 @@ func (h *Handlers) ChatHandler(c *gin.Context) {
 			return
 		}
 
+		// For student report requests, use only student.sql and tell AI to pick fields from prompt or most important columns
+		reportSQLFiles := sqlFiles
+		useStudentReportPrompt := false
+		if strings.Contains(lowerPrompt, "student") {
+			var studentOnly []models.SQLFile
+			for _, f := range sqlFiles {
+				base := filepath.Base(f.Name)
+				if strings.EqualFold(strings.TrimSpace(base), "student.sql") {
+					studentOnly = append(studentOnly, f)
+					break
+				}
+			}
+			if len(studentOnly) > 0 {
+				reportSQLFiles = studentOnly
+				useStudentReportPrompt = true
+				log.Printf("Student report detected: using student.sql with field-selection prompt")
+			}
+		}
+
 		// Generate SQL using AI
-		sql, err = h.aiService.GenerateSQL(req.Message, sqlFiles)
+		var sql string
+		if useStudentReportPrompt {
+			sql, err = h.aiService.GenerateSQLForStudentReport(req.Message, reportSQLFiles)
+		} else {
+			sql, err = h.aiService.GenerateSQL(req.Message, reportSQLFiles)
+		}
 		if err != nil {
 			log.Printf("Error generating SQL: %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to generate SQL: %v", err)})
@@ -334,86 +360,46 @@ func (h *Handlers) ChatHandler(c *gin.Context) {
 		}
 
 		responseText = fmt.Sprintf("Here's the SQL query based on your request:\n\n%s", sql)
-		log.Printf("Prepared response text, length: %d", len(responseText))
 
-		// Execute SQL and save result in background (don't block response)
-		// Check if SQL service is available before starting goroutine
-		if h.sqlService == nil {
-			log.Printf("SQL service is nil, skipping background SQL execution and HTML generation")
-		} else {
-			// Capture variables needed for the goroutine
-			sqlService := h.sqlService
-			aiService := h.aiService
-			go func() {
-				log.Printf("Background goroutine started for SQL execution")
-				defer func() {
-					if r := recover(); r != nil {
-						log.Printf("Panic in background SQL execution: %v", r)
-					}
-				}()
-
-				resultsStorage := sqlService.GetResultsStorage()
-				if resultsStorage == nil {
-					log.Printf("Results storage is nil, skipping background execution")
-					return
-				}
-
-				log.Printf("Starting SQL execution with query length: %d", len(finalSQL))
-				// Execute SQL and save as JSON
-				sqlResult, err := sqlService.ExecuteQueryWithSave(finalSQL, "json", true)
-				if err != nil {
-					log.Printf("Error executing SQL: %v", err)
-					return
-				}
-				if sqlResult.Error != "" {
+		// Run report flow: execute SQL (max 10 rows), format as table for chat, generate PDF for download
+		if h.sqlService != nil {
+			resultsStorage := h.sqlService.GetResultsStorage()
+			if resultsStorage != nil {
+				// Execute against configured SQL Server (max 10 records; table has lots of data)
+				sqlResult, execErr := h.sqlService.ExecuteQueryWithSaveMaxRows(finalSQL, "json", true, 10)
+				if execErr != nil {
+					log.Printf("Error executing report SQL: %v", execErr)
+					responseText += "\n\n**Could not run the query:** " + execErr.Error()
+				} else if sqlResult.Error != "" {
 					log.Printf("SQL execution error: %s", sqlResult.Error)
-					return
-				}
-				if sqlResult.Filename == "" {
-					log.Printf("No filename returned from SQL execution")
-					return
-				}
-				log.Printf("SQL executed successfully, result file: %s", sqlResult.Filename)
+					responseText += "\n\n**Query error:** " + sqlResult.Error
+				} else if len(sqlResult.Rows) > 0 || len(sqlResult.Columns) > 0 {
+					reportTitle := "Report Results"
+					// AI formats result as a nice HTML table for the chat panel
+					tableHTML, tableErr := h.aiService.FormatResultAsHTMLTable(context.Background(), sqlResult.Columns, sqlResult.Rows, reportTitle)
+					if tableErr != nil {
+						log.Printf("Error formatting report table: %v", tableErr)
+					}
+					// Generate PDF for download
+					resultsDir := resultsStorage.GetResultsDir()
+					pdfFilename, pdfErr := service.WriteResultPDF(resultsDir, sqlResult, reportTitle)
+					if pdfErr != nil {
+						log.Printf("Error generating report PDF: %v", pdfErr)
+					}
 
-				// Load the ResultFile
-				resultFile, err := resultsStorage.GetResultFile(sqlResult.Filename)
-				if err != nil {
-					log.Printf("Error loading result file: %v", err)
+					response := models.ChatResponse{
+						Response:          responseText,
+						SQL:               sql,
+						ReportTableHTML:   tableHTML,
+						ReportPDFFilename: pdfFilename,
+					}
+					persistChatExchange(h, userID, sessionID, req.Message, &response)
+					c.JSON(http.StatusOK, response)
 					return
 				}
-				log.Printf("Result file loaded, rows: %d", resultFile.RowCount)
-
-				// Generate HTML page
-				title := fmt.Sprintf("SQL Query Results - %s", sqlResult.Filename)
-				log.Printf("Generating HTML page with title: %s", title)
-				html, err := aiService.GenerateHTMLPage(resultFile, title)
-				if err != nil {
-					log.Printf("Error generating HTML: %v", err)
-					return
-				}
-				log.Printf("HTML generated successfully, length: %d", len(html))
-
-				// Save HTML to products folder
-				productsDir := "products"
-				if err := os.MkdirAll(productsDir, 0755); err != nil {
-					log.Printf("Error creating products directory: %v", err)
-					return
-				}
-				// Generate HTML filename from result filename
-				htmlFilename := sqlResult.Filename
-				ext := filepath.Ext(htmlFilename)
-				if ext != "" {
-					htmlFilename = htmlFilename[:len(htmlFilename)-len(ext)]
-				}
-				htmlFilename += ".html"
-				htmlPath := filepath.Join(productsDir, htmlFilename)
-
-				if err := os.WriteFile(htmlPath, []byte(html), 0644); err != nil {
-					log.Printf("Error saving HTML file: %v", err)
-				} else {
-					log.Printf("HTML page saved successfully to: %s", htmlPath)
-				}
-			}()
+			}
+		} else {
+			log.Printf("SQL service is nil, report not executed")
 		}
 	}
 
@@ -450,13 +436,17 @@ func persistChatExchange(h *Handlers, userID, sessionID string, userMessage stri
 		log.Printf("[CHAT] Failed to append user message to session: %v", err)
 		return
 	}
+	// Ensure assistant message gets a different storage key (avoid same-nanosecond overwrite on low-res clocks)
+	time.Sleep(1 * time.Millisecond)
 	assistantMsg := &models.StoredChatMessage{
-		Role:            "assistant",
-		Content:         resp.Response,
-		SQL:             resp.SQL,
-		ConfirmationCard: resp.ConfirmationCard,
-		ProposedForm:    resp.ProposedForm,
-		ResearchContent: resp.ResearchContent,
+		Role:              "assistant",
+		Content:            resp.Response,
+		SQL:                resp.SQL,
+		ConfirmationCard:   resp.ConfirmationCard,
+		ProposedForm:       resp.ProposedForm,
+		ResearchContent:    resp.ResearchContent,
+		ReportTableHTML:    resp.ReportTableHTML,
+		ReportPDFFilename:  resp.ReportPDFFilename,
 	}
 	if err := h.db.AppendChatMessage(userID, sessionID, assistantMsg); err != nil {
 		log.Printf("[CHAT] Failed to append assistant message to session: %v", err)
